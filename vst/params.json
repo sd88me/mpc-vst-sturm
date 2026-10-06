@@ -1,0 +1,1271 @@
+{
+ "name": "Sturm",
+ "params": [
+  {
+   "key": "osc1_freq",
+   "name": "Osc1 Freq",
+   "min": 0,
+   "max": 120,
+   "default": 36,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc1_fine",
+   "name": "Osc1 Fine",
+   "min": 0,
+   "max": 100,
+   "default": 50,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc1_shape",
+   "name": "Osc1 Shape",
+   "min": 0,
+   "max": 103,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc1_glide",
+   "name": "Osc1 Glide",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "osc1_key",
+   "name": "Osc1 KeyFollow",
+   "min": 0,
+   "max": 1,
+   "default": 1,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc1_reset",
+   "name": "Osc1 WaveReset",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc2_freq",
+   "name": "Osc2 Freq",
+   "min": 0,
+   "max": 120,
+   "default": 36,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc2_fine",
+   "name": "Osc2 Fine",
+   "min": 0,
+   "max": 100,
+   "default": 50,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc2_shape",
+   "name": "Osc2 Shape",
+   "min": 0,
+   "max": 103,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc2_glide",
+   "name": "Osc2 Glide",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "osc2_key",
+   "name": "Osc2 KeyFollow",
+   "min": 0,
+   "max": 1,
+   "default": 1,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc2_reset",
+   "name": "Osc2 WaveReset",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc3_freq",
+   "name": "Osc3 Pitch",
+   "min": 0,
+   "max": 120,
+   "default": 64,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc3_fine",
+   "name": "Osc3 Fine",
+   "min": 0,
+   "max": 100,
+   "default": 50,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc3_snum",
+   "name": "Osc3 Smp Num",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "osc3_sbank",
+   "name": "Osc3 Smp Bank",
+   "min": 0,
+   "max": 4,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "osc3_glide",
+   "name": "Osc3 Glide",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "osc3_key",
+   "name": "Osc3 KeyFollow",
+   "min": 0,
+   "max": 1,
+   "default": 1,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc4_freq",
+   "name": "Osc4 Pitch",
+   "min": 0,
+   "max": 120,
+   "default": 64,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc4_fine",
+   "name": "Osc4 Fine",
+   "min": 0,
+   "max": 100,
+   "default": 50,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc4_snum",
+   "name": "Osc4 Smp Num",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "osc4_sbank",
+   "name": "Osc4 Smp Bank",
+   "min": 0,
+   "max": 4,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "osc4_glide",
+   "name": "Osc4 Glide",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "osc4_key",
+   "name": "Osc4 KeyFollow",
+   "min": 0,
+   "max": 1,
+   "default": 1,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "sync",
+   "name": "Sync 2>1",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "glide_mode",
+   "name": "Glide Mode",
+   "options": [
+    "FixRate",
+    "FixRate A",
+    "FixTime",
+    "FixTime A"
+   ],
+   "default": 0
+  },
+  {
+   "key": "slop",
+   "name": "Osc Slop",
+   "min": 0,
+   "max": 5,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "bend_range",
+   "name": "Bend Range",
+   "min": 0,
+   "max": 12,
+   "default": 2,
+   "display": "int"
+  },
+  {
+   "key": "osc_mix",
+   "name": "Osc 1/2 Mix",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "sub_osc",
+   "name": "Sub Osc",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "osc3_level",
+   "name": "Osc3 Level",
+   "min": 0,
+   "max": 127,
+   "default": 120,
+   "display": "int"
+  },
+  {
+   "key": "osc4_level",
+   "name": "Osc4 Level",
+   "min": 0,
+   "max": 127,
+   "default": 120,
+   "display": "int"
+  },
+  {
+   "key": "prepost",
+   "name": "Pre/Post Filter",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "feedback",
+   "name": "Feedback",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "lpf_freq",
+   "name": "LP Freq",
+   "min": 0,
+   "max": 164,
+   "default": 164,
+   "display": "int"
+  },
+  {
+   "key": "lpf_res",
+   "name": "LP Resonance",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "lpf_key",
+   "name": "LP Key Amt",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "fenv_amt",
+   "name": "LP Env Amount",
+   "min": 0,
+   "max": 254,
+   "default": 127,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "fenv_vel",
+   "name": "LP Env Vel Amt",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "audio_mod",
+   "name": "Audio Mod",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "poles",
+   "name": "4 Pole",
+   "options": [
+    "2 Pole",
+    "4 Pole"
+   ],
+   "default": 1
+  },
+  {
+   "key": "hpf_freq",
+   "name": "HP Freq",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "hpf_key",
+   "name": "HP Key Amt",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "vca_level",
+   "name": "VCA Level",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "aenv_amt",
+   "name": "Amp Env Amount",
+   "min": 0,
+   "max": 127,
+   "default": 15,
+   "display": "int"
+  },
+  {
+   "key": "aenv_vel",
+   "name": "Amp Env Vel Amt",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "volume",
+   "name": "Volume",
+   "min": 0,
+   "max": 127,
+   "default": 127,
+   "display": "int"
+  },
+  {
+   "key": "lfo1_rate",
+   "name": "LFO1 Rate",
+   "min": 0,
+   "max": 178,
+   "default": 80,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "lfo1_shape",
+   "name": "LFO1 Shape",
+   "options": [
+    "Triangle",
+    "Rev Saw",
+    "Sawtooth",
+    "Square",
+    "Random"
+   ],
+   "default": 0
+  },
+  {
+   "key": "lfo1_amt",
+   "name": "LFO1 Amount",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "lfo1_dest",
+   "name": "LFO1 Dest",
+   "min": 0,
+   "max": 57,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "lfo1_sync",
+   "name": "LFO1 Sync",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "lfo2_rate",
+   "name": "LFO2 Rate",
+   "min": 0,
+   "max": 178,
+   "default": 80,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "lfo2_shape",
+   "name": "LFO2 Shape",
+   "options": [
+    "Triangle",
+    "Rev Saw",
+    "Sawtooth",
+    "Square",
+    "Random"
+   ],
+   "default": 0
+  },
+  {
+   "key": "lfo2_amt",
+   "name": "LFO2 Amount",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "lfo2_dest",
+   "name": "LFO2 Dest",
+   "min": 0,
+   "max": 57,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "lfo2_sync",
+   "name": "LFO2 Sync",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "env_gate",
+   "name": "AD Mode",
+   "options": [
+    "On",
+    "Off"
+   ],
+   "default": 0
+  },
+  {
+   "key": "penv_dest",
+   "name": "Pitch Env Dest",
+   "min": 0,
+   "max": 57,
+   "default": 5,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "penv_amt",
+   "name": "Pitch Env Amount",
+   "min": 0,
+   "max": 254,
+   "default": 127,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "penv_vel",
+   "name": "Pitch Env Vel Amt",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "penv_delay",
+   "name": "Pitch Env Delay",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "penv_a",
+   "name": "Pitch Env Attack",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "penv_d",
+   "name": "Pitch Env Decay",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "penv_s",
+   "name": "Pitch Env Sustain",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "penv_r",
+   "name": "Pitch Env Release",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "fenv_delay",
+   "name": "LP Env Delay",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "fenv_a",
+   "name": "LP Env Attack",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "fenv_d",
+   "name": "LP Env Decay",
+   "min": 0,
+   "max": 127,
+   "default": 50,
+   "display": "int"
+  },
+  {
+   "key": "fenv_s",
+   "name": "LP Env Sustain",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "fenv_r",
+   "name": "LP Env Release",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "aenv_delay",
+   "name": "Amp Env Delay",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "aenv_a",
+   "name": "Amp Env Attack",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "aenv_d",
+   "name": "Amp Env Decay",
+   "min": 0,
+   "max": 127,
+   "default": 70,
+   "display": "int"
+  },
+  {
+   "key": "aenv_s",
+   "name": "Amp Env Sustain",
+   "min": 0,
+   "max": 127,
+   "default": 120,
+   "display": "int"
+  },
+  {
+   "key": "aenv_r",
+   "name": "Amp Env Release",
+   "min": 0,
+   "max": 123,
+   "default": 80,
+   "display": "int"
+  },
+  {
+   "key": "x1env_dest",
+   "name": "Aux1 Env Dest",
+   "min": 0,
+   "max": 57,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "x1env_amt",
+   "name": "Aux1 Env Amount",
+   "min": 0,
+   "max": 254,
+   "default": 127,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "x1env_vel",
+   "name": "Aux1 Env Vel Amt",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "x1env_delay",
+   "name": "Aux1 Env Delay",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "x1env_a",
+   "name": "Aux1 Env Attack",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "x1env_d",
+   "name": "Aux1 Env Decay",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "x1env_s",
+   "name": "Aux1 Env Sustain",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "x1env_r",
+   "name": "Aux1 Env Release",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "x2env_dest",
+   "name": "Aux2 Env Dest",
+   "min": 0,
+   "max": 57,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "x2env_amt",
+   "name": "Aux2 Env Amount",
+   "min": 0,
+   "max": 254,
+   "default": 127,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "x2env_vel",
+   "name": "Aux2 Env Vel Amt",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "x2env_delay",
+   "name": "Aux2 Env Delay",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "x2env_a",
+   "name": "Aux2 Env Attack",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "x2env_d",
+   "name": "Aux2 Env Decay",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "x2env_s",
+   "name": "Aux2 Env Sustain",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "x2env_r",
+   "name": "Aux2 Env Release",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "mod1_src",
+   "name": "Mod1 Source",
+   "min": 0,
+   "max": 22,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod1_amt",
+   "name": "Mod1 Amount",
+   "min": 0,
+   "max": 254,
+   "default": 127,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod1_dest",
+   "name": "Mod1 Dest",
+   "min": 0,
+   "max": 57,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod2_src",
+   "name": "Mod2 Source",
+   "min": 0,
+   "max": 22,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod2_amt",
+   "name": "Mod2 Amount",
+   "min": 0,
+   "max": 254,
+   "default": 127,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod2_dest",
+   "name": "Mod2 Dest",
+   "min": 0,
+   "max": 57,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod3_src",
+   "name": "Mod3 Source",
+   "min": 0,
+   "max": 22,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod3_amt",
+   "name": "Mod3 Amount",
+   "min": 0,
+   "max": 254,
+   "default": 127,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod3_dest",
+   "name": "Mod3 Dest",
+   "min": 0,
+   "max": 57,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod4_src",
+   "name": "Mod4 Source",
+   "min": 0,
+   "max": 22,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod4_amt",
+   "name": "Mod4 Amount",
+   "min": 0,
+   "max": 254,
+   "default": 127,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod4_dest",
+   "name": "Mod4 Dest",
+   "min": 0,
+   "max": 57,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod5_src",
+   "name": "Mod5 Source",
+   "min": 0,
+   "max": 22,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod5_amt",
+   "name": "Mod5 Amount",
+   "min": 0,
+   "max": 254,
+   "default": 127,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod5_dest",
+   "name": "Mod5 Dest",
+   "min": 0,
+   "max": 57,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod6_src",
+   "name": "Mod6 Source",
+   "min": 0,
+   "max": 22,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod6_amt",
+   "name": "Mod6 Amount",
+   "min": 0,
+   "max": 254,
+   "default": 127,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod6_dest",
+   "name": "Mod6 Dest",
+   "min": 0,
+   "max": 57,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod7_src",
+   "name": "Mod7 Source",
+   "min": 0,
+   "max": 22,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod7_amt",
+   "name": "Mod7 Amount",
+   "min": 0,
+   "max": 254,
+   "default": 127,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod7_dest",
+   "name": "Mod7 Dest",
+   "min": 0,
+   "max": 57,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod8_src",
+   "name": "Mod8 Source",
+   "min": 0,
+   "max": 22,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod8_amt",
+   "name": "Mod8 Amount",
+   "min": 0,
+   "max": 254,
+   "default": 127,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "mod8_dest",
+   "name": "Mod8 Dest",
+   "min": 0,
+   "max": 57,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "penv_peak",
+   "name": "Pitch Env Peak",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "fenv_peak",
+   "name": "LP Env Peak",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "aenv_peak",
+   "name": "Amp Env Peak",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "x1env_peak",
+   "name": "Aux1 Env Peak",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "x2env_peak",
+   "name": "Aux2 Env Peak",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "osc3_rev",
+   "name": "Osc3 Reverse",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "osc4_rev",
+   "name": "Osc4 Reverse",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "key_assign",
+   "name": "Key Assign",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "f124",
+   "name": "Field 124",
+   "min": 0,
+   "max": 31,
+   "default": 3,
+   "display": "int"
+  },
+  {
+   "key": "lfo1_restart",
+   "name": "LFO1 Restart",
+   "options": [
+    "Off",
+    "Note",
+    "Beat",
+    "Play"
+   ],
+   "default": 1
+  },
+  {
+   "key": "lfo2_restart",
+   "name": "LFO2 Restart",
+   "options": [
+    "Off",
+    "Note",
+    "Beat",
+    "Play"
+   ],
+   "default": 1
+  },
+  {
+   "key": "bank",
+   "name": "Bank",
+   "min": 0,
+   "max": 63,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "program",
+   "name": "Sound",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "patch_name",
+   "name": "Name",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_name",
+   "name": "Bank Name",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "osc3_sample",
+   "name": "Osc3 Sample",
+   "min": 0,
+   "max": 463,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true,
+   "nudge_pct": 10
+  },
+  {
+   "key": "osc4_sample",
+   "name": "Osc4 Sample",
+   "min": 0,
+   "max": 463,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true,
+   "nudge_pct": 10
+  },
+  {
+   "key": "pan",
+   "name": "Pan",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "voices",
+   "name": "Voices",
+   "min": 1,
+   "max": 8,
+   "default": 6,
+   "display": "int"
+  },
+  {
+   "key": "mono_mode",
+   "name": "Voice Mode",
+   "options": [
+    "Poly",
+    "Low Note",
+    "Low Retrig",
+    "High Note",
+    "High Retrig",
+    "Last Note",
+    "Last Retrig"
+   ],
+   "default": 0
+  },
+  {
+   "key": "root",
+   "name": "Root Note",
+   "min": 0,
+   "max": 127,
+   "default": 60,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "status",
+   "name": "Status",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_prev",
+   "name": "Bank <",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "momentary": true,
+   "type": "trigger",
+   "step_of": "bank",
+   "step_delta": -1
+  },
+  {
+   "key": "bank_next",
+   "name": "Bank >",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "momentary": true,
+   "type": "trigger",
+   "step_of": "bank",
+   "step_delta": 1
+  },
+  {
+   "key": "program_prev",
+   "name": "Sound <",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "momentary": true,
+   "type": "trigger",
+   "step_of": "program",
+   "step_delta": -1
+  },
+  {
+   "key": "program_next",
+   "name": "Sound >",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "momentary": true,
+   "type": "trigger",
+   "step_of": "program",
+   "step_delta": 1
+  },
+  {
+   "key": "kit",
+   "name": "Kit Mode",
+   "options": [
+    "Off",
+    "On",
+    "On + Select"
+   ],
+   "default": 0
+  },
+  {
+   "key": "kit_base",
+   "name": "Kit Notes",
+   "min": 0,
+   "max": 112,
+   "default": 36,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "kit_page",
+   "name": "Kit Page",
+   "min": 0,
+   "max": 7,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  }
+ ]
+}

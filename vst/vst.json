@@ -1,0 +1,17 @@
+{
+  "name": "Sturm",
+  "vendor": "sd88me",
+  "uid": "StrM",
+  "version": 1000,
+  "so": "sturm.so",
+  "params": "params.json",
+  "layout": "layout.conf",
+  "art": "html",
+  "defines": {"MODULE_SUBDIR": "\".\"", "HAS_LFO_BPM": 1, "HAS_TRANSPORT": 1, "HAS_DISPLAY_REV": 1, "PARAM_TEXT_MAX": 32},
+  "build": {
+    "root": "..",
+    "sources": ["src/engine.c", "src/analog.c", "src/curves.c", "src/tsnd.c", "src/samples.c", "src/sample_names.c", "src/presets.c"],
+    "cflags": ["-Isrc", "-O2"],
+    "libs": ["-lm"]
+  }
+}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="100" viewBox="0 0 360 100">
+  <!-- Sturm wordmark, our own: a wide lettering in pale blue with a thin underline; not the instrument's logo -->
+  <text x="20" y="62" font-family="Titillium Web, sans-serif" font-weight="700" font-size="50" letter-spacing="12" fill="#a9c4e8">STURM</text>
+  <rect x="22" y="72" width="250" height="2" fill="#a9c4e8" opacity="0.6"/>
+  <text x="22" y="92" font-family="Titillium Web, sans-serif" font-style="italic" font-size="13" letter-spacing="4" fill="#c3c8cf">ANALOG DRUM VOICE</text>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="300" viewBox="0 0 460 300">
+<text x="10" y="22" font-family="Titillium Web, sans-serif" font-size="14" font-weight="600" font-style="italic" letter-spacing="1.5" fill="#a9c4e8">VOICE</text>
+<rect x="10" y="50" width="92" height="40" rx="5" fill="#1d1f22" stroke="#a9c4e8" stroke-width="1.5"/><text x="56" y="75" font-family="Titillium Web, sans-serif" font-size="14" font-weight="600" fill="#e9ecef" text-anchor="middle">OSC 1/2</text>
+<rect x="10" y="120" width="92" height="40" rx="5" fill="#1d1f22" stroke="#a9c4e8" stroke-width="1.5"/><text x="56" y="145" font-family="Titillium Web, sans-serif" font-size="14" font-weight="600" fill="#e9ecef" text-anchor="middle">OSC 3/4</text>
+<rect x="140" y="85" width="70" height="40" rx="5" fill="#1d1f22" stroke="#a9c4e8" stroke-width="1.5"/><text x="175" y="110" font-family="Titillium Web, sans-serif" font-size="14" font-weight="600" fill="#e9ecef" text-anchor="middle">LP</text>
+<rect x="240" y="85" width="70" height="40" rx="5" fill="#1d1f22" stroke="#a9c4e8" stroke-width="1.5"/><text x="275" y="110" font-family="Titillium Web, sans-serif" font-size="14" font-weight="600" fill="#e9ecef" text-anchor="middle">HP</text>
+<rect x="340" y="85" width="60" height="40" rx="5" fill="#1d1f22" stroke="#a9c4e8" stroke-width="1.5"/><text x="370" y="110" font-family="Titillium Web, sans-serif" font-size="14" font-weight="600" fill="#e9ecef" text-anchor="middle">VCA</text>
+<rect x="340" y="175" width="60" height="40" rx="5" fill="#1d1f22" stroke="#a9c4e8" stroke-width="1.5"/><text x="370" y="200" font-family="Titillium Web, sans-serif" font-size="14" font-weight="600" fill="#e9ecef" text-anchor="middle">PAN</text>
+<path d="M102,70 L122,70 L122,98 L140,98" fill="none" stroke="#4aa8ff" stroke-width="2"/><polygon points="140,98 131,93 131,103" fill="#4aa8ff"/>
+<path d="M102,140 L122,140 L122,112 L140,112" fill="none" stroke="#4aa8ff" stroke-width="2"/><polygon points="140,112 131,107 131,117" fill="#4aa8ff"/>
+<path d="M210,98 L240,98" fill="none" stroke="#4aa8ff" stroke-width="2"/><polygon points="240,98 231,93 231,103" fill="#4aa8ff"/>
+<path d="M310,98 L340,98" fill="none" stroke="#4aa8ff" stroke-width="2"/><polygon points="340,98 331,93 331,103" fill="#4aa8ff"/>
+<path d="M370,125 L370,175" fill="none" stroke="#4aa8ff" stroke-width="2"/><polygon points="370,175 365,166 375,166" fill="#4aa8ff"/>
+<path d="M400,195 L448,195" fill="none" stroke="#4aa8ff" stroke-width="2"/><polygon points="448,195 439,190 439,200" fill="#4aa8ff"/>
+<text x="448" y="220" font-family="Titillium Web, sans-serif" font-size="12" font-style="italic" fill="#a9c4e8" text-anchor="end">L R</text>
+<path d="M56,160 L56,240 L325,240 L325,117 L340,117" fill="none" stroke="#4aa8ff" stroke-width="2" stroke-dasharray="5 4"/><polygon points="340,117 331,112 331,122" fill="#4aa8ff"/>
+<text x="188" y="258" font-family="Titillium Web, sans-serif" font-size="12" font-style="italic" fill="#a9c4e8" text-anchor="middle">PRE/POST: samples past the filters</text>
+<path d="M340,195 L175,195 L175,125" fill="none" stroke="#4aa8ff" stroke-width="2" stroke-dasharray="5 4"/><polygon points="175,125 170,134 180,134" fill="#4aa8ff"/>
+<text x="258" y="188" font-family="Titillium Web, sans-serif" font-size="12" font-style="italic" fill="#a9c4e8" text-anchor="middle">FEEDBACK (left output)</text>
+</svg>

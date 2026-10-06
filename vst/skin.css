@@ -1,0 +1,42 @@
+/* Sturm skin stylesheet (loaded after tools/html_art/default.css of mpc-vst-plugins). Colours come from the theme_* lines.
+ * Cues from the instrument, drawn as our own: a charcoal plate framed by walnut cheeks, sections as thin grey outlines with pale
+ * blue caps titles, black knobs with a silver cap and white pointer, blue LEDs, a blue LCD with white text. Geometry is never
+ * touched (MPC puts its live controls on top). */
+:root { --label-size: 13px; --title-size: 14px; --radius: 4px; --sheen: 0.18; }
+#g > rect:first-child[width="1280"] { fill: transparent; }
+#c:has(#g > rect:first-child[width="1280"]) {
+  background-color: var(--bg);
+  background-image:
+    /* walnut cheeks, left and right */
+    linear-gradient(90deg, #5a3218 0px, #8a5530 3px, #6e4122 7px, rgba(0,0,0,0) 8px, rgba(0,0,0,0) 1272px, #6e4122 1273px, #8a5530 1277px, #5a3218 1280px),
+    repeating-linear-gradient(0deg, rgba(40, 20, 8, 0.35) 0 2px, rgba(0, 0, 0, 0) 2px 7px),
+    /* the plate: a soft top light over a brushed charcoal */
+    radial-gradient(ellipse 90% 70% at 40% 0%, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 70%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.012) 0 1px, rgba(0, 0, 0, 0.02) 1px 3px),
+    linear-gradient(175deg, #303337 0%, #2a2c30 60%, #25272a 100%);
+  background-size: 100% 100%, 8px 100%, 100% 100%, 100% 100%, 100% 100%;
+  background-repeat: no-repeat, repeat-y, no-repeat, repeat, no-repeat;
+}
+.frame-border { fill: rgba(0, 0, 0, 0.08); stroke: var(--line); stroke-width: 1.2; rx: 4px; }
+.frame-rule { display: none; }
+.frame-title { font-size: var(--title-size); font-weight: 600; font-style: italic; fill: #a9c4e8; letter-spacing: 0.08em; }
+/* knobs (look=moog, the renderer's own drawing): a black knurled body, a white line, a brushed metal cap */
+.look-skirt { fill: #0b0b0c; }
+.look-knurl { stroke: #2e3033; }
+.look-body { fill: #141517; stroke: #000; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.75)); }
+.look-line { stroke: #ffffff; }
+.knob-sheen { opacity: 0.35; }
+.text, .box-label { fill: #e9ecef; letter-spacing: 0.05em; }
+/* blue LEDs */
+.look-led-bezel { fill: #0f1012; stroke: #6b7078; stroke-width: 1; }
+.look-led { fill: #10203a; }
+.on .look-led { fill: #4aa8ff; filter: drop-shadow(0 0 6px #4aa8ff); }
+/* fields, buttons (light grey, like the panel's keys), the blue LCD */
+.box { fill: #1d1f22; stroke: #6b7078; stroke-width: 1.1; rx: 3px; }
+.arrow-bg { fill: #d7dade; }
+.arrow { fill: #15161a; }
+.dot-bezel { fill: #0b0c0e; }
+.dot-arrow { fill: #f2f6ff; }
+.button-bg { fill: #d7dade; }
+.seg-tx { fill: #e9ecef; }
+.tile-border { stroke: rgba(141, 147, 156, 0.6); }
