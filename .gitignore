@@ -1,0 +1,9 @@
+build/
+dist/
+__pycache__/
+*.bin
+*.syx
+*.wav
+SYSEX/
+SAMPLES/
+vst/build/
