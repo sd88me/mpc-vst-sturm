@@ -10,6 +10,7 @@
 #include <string.h>
 #include <strings.h>
 #include "samples.h"
+#include "vsrom.h"
 
 #define SR 44100.0f
 #define TWO_PI 6.2831853f
@@ -468,16 +469,10 @@ static void load_oneshot(tp_samples_t *ss, int k, const wav_t *w) {
     s->user = s->ready = 1;
     ss->user++;
 }
-/* One cycle (L frames from a) becomes wave slot `slot`: resampled to TP_WLEN points, then the same band-limited tables as the stand-ins. */
-static void set_cycle(tp_samples_t *ss, const wav_t *w, uint32_t a, uint32_t L, int slot) {
-    float cyc[TP_WLEN], amp[129], phs[129], mean = 0;
-    for (int j = 0; j < TP_WLEN; j++) {
-        float p = (float)j * L / TP_WLEN;
-        uint32_t i0 = (uint32_t)p, i1 = i0 + 1 < L ? i0 + 1 : i0;
-        float x0 = wav_at(w, a + i0), x1 = wav_at(w, a + i1);
-        cyc[j] = x0 + (p - i0) * (x1 - x0);
-        mean += cyc[j];
-    }
+/* One cycle of TP_WLEN points becomes wave slot `slot`: the same band-limited tables as the stand-ins. */
+static void set_cycle_f(tp_samples_t *ss, const float *cyc, int slot) {
+    float amp[129], phs[129], mean = 0;
+    for (int j = 0; j < TP_WLEN; j++) mean += cyc[j];
     mean /= TP_WLEN;
     for (int h = 1; h <= 128; h++) {
         float re = 0, im = 0;
@@ -496,6 +491,17 @@ static void set_cycle(tp_samples_t *ss, const wav_t *w, uint32_t a, uint32_t L, 
     s->len = TP_WLEN;
     s->user = s->ready = 1;
     ss->user++;
+}
+/* One cycle (L frames from a) of a WAV, resampled to TP_WLEN points. */
+static void set_cycle(tp_samples_t *ss, const wav_t *w, uint32_t a, uint32_t L, int slot) {
+    float cyc[TP_WLEN];
+    for (int j = 0; j < TP_WLEN; j++) {
+        float p = (float)j * L / TP_WLEN;
+        uint32_t i0 = (uint32_t)p, i1 = i0 + 1 < L ? i0 + 1 : i0;
+        float x0 = wav_at(w, a + i0), x1 = wav_at(w, a + i1);
+        cyc[j] = x0 + (p - i0) * (x1 - x0);
+    }
+    set_cycle_f(ss, cyc, slot);
 }
 static void load_cycles(tp_samples_t *ss, const wav_t *w) {
     uint32_t edges[258];
@@ -536,15 +542,40 @@ int samples_load_dir(tp_samples_t *ss, const char *dir) {
     int before = ss->user;
     struct dirent *e;
     char path[1024];
+    uint8_t *rom[6] = {0};              /* Prophet VS program ROM images (16, 32 or 64 KB files), paired up after the scan */
+    size_t romlen[6];
+    int nrom = 0, vsmap[96];
+    for (int i = 0; i < 96; i++) vsmap[i] = i < VSROM_WAVES ? i : -1;
     while ((e = readdir(d))) {
         size_t l = strlen(e->d_name);
-        if (l < 5 || strcasecmp(e->d_name + l - 4, ".wav")) continue;
+        if (l < 5) continue;
+        int isrom = !strcasecmp(e->d_name + l - 4, ".bin") || !strcasecmp(e->d_name + l - 4, ".rom");
+        if (!isrom && strcasecmp(e->d_name + l - 4, ".wav")) {
+            if (!strcasecmp(e->d_name, "vsmap.txt")) {       /* "<wave slot 0-95> <rom wave 0-94 or -1>" per line: overrides the default map */
+                snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
+                FILE *mf = fopen(path, "r");
+                char line[128];
+                while (mf && fgets(line, sizeof line, mf)) {
+                    int a, b;
+                    if (line[0] != '#' && sscanf(line, "%d %d", &a, &b) == 2 && a >= 0 && a < 96 && b >= -1 && b < VSROM_WAVES) vsmap[a] = b;
+                }
+                if (mf) fclose(mf);
+            }
+            continue;
+        }
         snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
         FILE *f = fopen(path, "rb");
         if (!f) continue;
         fseek(f, 0, SEEK_END);
         long n = ftell(f);
         fseek(f, 0, SEEK_SET);
+        if (isrom) {
+            if ((n == 16384 || n == 32768 || n == 65536) && nrom < 6 && (rom[nrom] = malloc((size_t)n))) {
+                if (fread(rom[nrom], 1, (size_t)n, f) == (size_t)n) romlen[nrom++] = (size_t)n; else { free(rom[nrom]); rom[nrom] = NULL; }
+            }
+            fclose(f);
+            continue;
+        }
         uint8_t *buf = (n > 44 && n < (64L << 20)) ? malloc((size_t)n) : NULL;
         if (buf && fread(buf, 1, (size_t)n, f) == (size_t)n) {
             wav_t w;
@@ -564,5 +595,24 @@ int samples_load_dir(tp_samples_t *ss, const char *dir) {
         fclose(f);
     }
     closedir(d);
+    /* the VS ROM's waves (slot map: see samples.h) win over a recording of cycles */
+    float (*vw)[VSROM_WLEN] = nrom ? malloc(sizeof(float) * VSROM_WAVES * VSROM_WLEN) : NULL;
+    int got = 0;
+    for (int a = 0; vw && a < nrom && !got; a++)
+        for (int b = a; b < nrom && !got; b++)
+            got = vsrom_decode(rom[a], romlen[a], a == b ? NULL : rom[b], romlen[b], vw) == VSROM_WAVES;
+    if (got)
+        for (int i = 0; i < 96; i++) {
+            if (vsmap[i] < 0) continue;
+            float cyc[TP_WLEN];
+            for (int j = 0; j < TP_WLEN; j++) {             /* 128 points to 256, periodic linear interpolation */
+                float p = (float)j * VSROM_WLEN / TP_WLEN;
+                int i0 = (int)p;
+                cyc[j] = vw[vsmap[i]][i0] + (p - i0) * (vw[vsmap[i]][(i0 + 1) % VSROM_WLEN] - vw[vsmap[i]][i0]);
+            }
+            set_cycle_f(ss, cyc, TP_FIRST_WAVE + i);
+        }
+    free(vw);
+    for (int i = 0; i < nrom; i++) free(rom[i]);
     return ss->user - before;
 }
