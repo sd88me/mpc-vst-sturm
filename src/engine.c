@@ -795,10 +795,9 @@ static void tp_render(void *h, int16_t *out, int frames) {
                 v->last_l = 0;
             }
         }
-        float g = 0.5f * s->cc_vol;
+        float g = 0.224f * s->cc_vol;   /* 7 dB below the first build, which clipped on chords: bench RMS on the Force, level-matched with Profit-8, Clementine-XT and Maze Voice */
         for (int i = 0; i < 2 * n; i++) {
-            float x = buf[i] * g;
-            x = x > 1 ? 1 : x < -1 ? -1 : x;
+            float x = ma_tanh(buf[i] * g);   /* soft limiter instead of a hard clip */
             out[2 * f + i] = (int16_t)lrintf(x * 32767);
         }
     }
