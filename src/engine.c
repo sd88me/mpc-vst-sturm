@@ -19,7 +19,7 @@
 #include "samples.h"
 #include "tsnd.h"
 #include "presets.h"
-#include "analog.h"
+#include "mpc_analog.h"
 
 #define FS 44100.0f
 #define MAXV 8
@@ -59,7 +59,7 @@ typedef struct {
     unsigned age;
     float key[4], tgt, from;       /* per oscillator glided key, the note it glides to, where it came from */
     ma_dco_t dco;                     /* osc 1, osc 2, sub */
-    cem_t lpf;
+    ma_ota2x_t lpf;
     double spos[2];                /* sample oscillators: position (frames, or cycles for waves) */
     int sdone[2];
     float slop[4], slopv[4];
@@ -116,9 +116,12 @@ static int sample_of(const tp_t *s, int osc) { return sample_of_f(s->f, osc); }
 static int PV(const voice_t *v, int i) { return v->f[i]; }
 static float S127V(const voice_t *v, int i) { return (float)v->f[i] - 127; }
 
+static float HB_B[MA_HB_B_M];     /* 2x -> 1x half-band of the low-pass */
 static void init_tables(void) {
     static int done;
     if (done) return;
+    float hb_a[MA_HB_A_M];
+    ma_hb_design_standard(hb_a, HB_B);
     for (int i = 0; i < 128; i++) { TAU_TAB[i] = tp_env_tau_s((float)i); DLY_TAB[i] = tp_env_delay_s((float)i); PEAK_TAB[i] = tp_env_peak_s((float)i); }
     done = 1;
 }
@@ -310,7 +313,7 @@ static void voice_trigger(tp_t *s, voice_t *v, int on) {
         v->sdone[o] = 0;
     }
     v->rnd_note = rnd(&v->rng);
-    v->lpf.s[0] += 0.02f;             /* the gate's control-voltage step leaks into the filter: a resonant filter starts at once */
+    v->lpf.st[0] += 0.02f;             /* the gate's control-voltage step leaks into the filter: a resonant filter starts at once */
 }
 static void voice_note(tp_t *s, voice_t *v, int note, int vel, int legato) {
     voice_load(s, v);
@@ -588,7 +591,7 @@ static void voice_audio(tp_t *s, voice_t *v, float *out, int n) {
         /* the Curtis low-pass (analog.h); audio mod is osc 1 sweeping the cutoff */
         float semis = v->cut_prev + (v->cut - v->cut_prev) * t + v->am * o1;
         float hz = tp_lpf_hz(semis);
-        float y = cem_tick(&v->lpf, in * 0.7f, v->hz_prev, hz, v->res, four) * 1.4f;
+        float y = ma_ota2x(&v->lpf, HB_B, in * 0.7f, hz, v->res, four, FS) * 1.4f;
         v->hz_prev = hz;
         /* 2-pole highpass (state variable, Butterworth) */
         if (hg > 0) {

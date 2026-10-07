@@ -218,4 +218,28 @@ static inline float ma_hb_dec(ma_hb_t *h, const float *c, int m, float x0, float
 #define MA_HB_B_M 12
 static inline void ma_hb_design_standard(float a[MA_HB_A_M], float b[MA_HB_B_M]) { ma_hb_design(a, MA_HB_A_M, 6.0); ma_hb_design(b, MA_HB_B_M, 8.6); }
 
+/* Ready-made 2x-oversampled filter for ports that run at the host rate (no oversampling of their own): two inner steps at 2 fs, the
+ * cutoff interpolated across the sample (G is computed once per sample, the middle one is the mean of this and the last), decimated by
+ * the standard 2x -> 1x half-band (hb_b from ma_hb_design_standard). Zero it to reset. res is 0..1: four-pole feedback k = 4.6 res
+ * (self-oscillates near the top), two-pole k = 1.2 res (never does). The gate-leak and noise-floor tricks are the caller's
+ * (st[0] += x, noise added to the input). */
+typedef struct { float st[4], nl[4]; ma_hb_t hb; float Gp; } ma_ota2x_t;
+static inline float ma_ota2x(ma_ota2x_t *f, const float *hb_b, float in, float hz, float res, int four, float fs) {
+    float k = four ? 4.6f * res : 1.2f * res, y[2];
+    /* the stages' limiting lowers the self-oscillation pitch by about 1.15 semitones at low cutoffs, less towards the top (measured at
+     * 65-14900 Hz): raise the cutoff to compensate, in proportion to res^4 (the amplitude, so the limiting, grows with it) */
+    float comp = 1;
+    if (four && res > 0.4f) {
+        float r2 = res * res;
+        comp = 1 + 0.0578f * 1.15f * r2 * r2 * (1 - sqrtf(hz * (1.0f / 16000)));
+        if (comp < 1) comp = 1;
+    }
+    float G = ma_ota_G(comp * hz, 2 * fs);
+    if (f->Gp == 0) f->Gp = G;
+    y[0] = ma_ota_lpf(f->st, f->nl, 0.5f * (f->Gp + G), k, four, in);
+    y[1] = ma_ota_lpf(f->st, f->nl, G, k, four, in);
+    f->Gp = G;
+    return ma_hb_dec(&f->hb, hb_b, MA_HB_B_M, y[0], y[1]);
+}
+
 #endif

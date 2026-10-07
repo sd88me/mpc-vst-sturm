@@ -22,7 +22,7 @@ its firmware and manual say:
   exponential segments, the LFO rates, glide and the modulation scaling, all at the voice CPU's 5 kHz control rate. The engine
   uses formulas and breakpoints fitted to them; no firmware data is in this repository or the plugin.
 - **The analog half is modelled on its circuits** ([docs/ANALOG.md](docs/ANALOG.md)): reset-integrator DCOs with band-limited
-  sync and sub, a CEM3320-style cell cascade with in-tune self-oscillation, high-pass, feedback and VCA. Not yet measured
+  sync and sub, a CEM3320-style zero-delay-feedback cell cascade with in-tune self-oscillation (kernels shared with Morpho-PE via the mpc-analog header), high-pass, feedback and VCA. Not yet measured
   against an instrument.
 
 ## Your own sounds and samples
