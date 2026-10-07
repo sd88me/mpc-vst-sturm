@@ -3,6 +3,8 @@
  * a fixed per-slot seed, so the same slot always sounds the same. They are meant to sit where the instrument's samples sit in a
  * sound (a kick where a kick was), not to imitate any recording. */
 #include <ctype.h>
+#include <pthread.h>
+#include <time.h>
 #include <dirent.h>
 #include <math.h>
 #include <stdio.h>
@@ -20,7 +22,21 @@ struct tp_samples {
     tp_sample_t slot[TP_NSAMPLES];
     float *mip[TP_NSAMPLES];      /* wave slots: NMIP band-limited tables of TP_WLEN points */
     int user;
+    /* stand-ins are synthesised by a worker thread, never on the audio thread: a slot is published by its `ready` flag (release/acquire) */
+    pthread_t th;
+    pthread_mutex_t mu;
+    pthread_cond_t cv;
+    int threaded, quit, q[TP_NSAMPLES], qn;
+    uint8_t state[TP_NSAMPLES];   /* 0 not built, 1 queued or being built, 2 ready */
 };
+static const tp_sample_t EMPTY;
+static int is_ready(const tp_samples_t *ss, int k) { return __atomic_load_n(&ss->slot[k].ready, __ATOMIC_ACQUIRE); }
+static void publish(tp_samples_t *ss, int k) {
+    pthread_mutex_lock(&ss->mu);
+    ss->state[k] = 2;
+    pthread_mutex_unlock(&ss->mu);
+    __atomic_store_n(&ss->slot[k].ready, 1, __ATOMIC_RELEASE);
+}
 
 /* slot groups, by position in the list (manual p. 80-84) */
 enum { G_OFF, G_NOISE, G_KICK, G_SNARE, G_HAT, G_CYM, G_TOM, G_CLAP, G_COW, G_PERC, G_WAVE };
@@ -355,7 +371,7 @@ static void synth_slot(tp_samples_t *ss, int k) {
     int g = group(k);
     rng_t r = {0x7E3A5000u + 7919u * (uint32_t)k};
     s->rate = 1;
-    if (g == G_OFF) { s->ready = 1; return; }
+    if (g == G_OFF) { return; }
     if (g == G_WAVE || k == 367) {
         float amp[129], phs[129];
         wave_spectrum(k, amp, phs, 128, &r);
@@ -364,12 +380,11 @@ static void synth_slot(tp_samples_t *ss, int k) {
         s->loop = 1;
         s->rate = TP_WAVE_HZ * TP_WLEN / SR;
         s->len = TP_WLEN;
-        s->ready = 1;
         return;
     }
     int n = (int)(slot_len(g, k) * SR);
     float *x = calloc((size_t)n, sizeof(float));
-    if (!x) { s->ready = 1; return; }
+    if (!x) { return; }
     switch (g) {
     case G_NOISE: gen_noise(k, x, n, &r); s->loop = 1; s->fixed = 1; break;
     case G_KICK: gen_kick(k, x, n, &r); break;
@@ -383,22 +398,80 @@ static void synth_slot(tp_samples_t *ss, int k) {
     }
     finish(s, x, n, has(k, "Reverse"));
     free(x);
-    s->ready = 1;
 }
 
-tp_samples_t *samples_open(void) { return calloc(1, sizeof(tp_samples_t)); }
+static void *worker(void *arg) {
+    tp_samples_t *ss = arg;
+    pthread_mutex_lock(&ss->mu);
+    for (;;) {
+        while (!ss->qn && !ss->quit) pthread_cond_wait(&ss->cv, &ss->mu);
+        if (ss->quit) break;
+        int k = ss->q[--ss->qn];          /* the latest request first: the slot just selected */
+        pthread_mutex_unlock(&ss->mu);
+        if (!is_ready(ss, k)) { synth_slot(ss, k); publish(ss, k); }
+        pthread_mutex_lock(&ss->mu);
+    }
+    pthread_mutex_unlock(&ss->mu);
+    return NULL;
+}
+tp_samples_t *samples_open(void) {
+    tp_samples_t *ss = calloc(1, sizeof(tp_samples_t));
+    if (!ss) return NULL;
+    pthread_mutex_init(&ss->mu, NULL);
+    pthread_cond_init(&ss->cv, NULL);
+    ss->threaded = pthread_create(&ss->th, NULL, worker, ss) == 0;
+    return ss;
+}
+void samples_request(tp_samples_t *ss, int k) {
+    if (k <= 0 || k >= TP_NSAMPLES || is_ready(ss, k)) return;
+    if (!ss->threaded) { samples_get(ss, k); return; }
+    if (pthread_mutex_trylock(&ss->mu)) return;     /* never wait here: the audio thread may call it; the next call asks again */
+    if (ss->state[k] == 0 && ss->qn < TP_NSAMPLES) { ss->state[k] = 1; ss->q[ss->qn++] = k; pthread_cond_signal(&ss->cv); }
+    pthread_mutex_unlock(&ss->mu);
+}
+const tp_sample_t *samples_peek(tp_samples_t *ss, int k) {
+    if (k <= 0 || k >= TP_NSAMPLES) return &ss->slot[0];
+    if (is_ready(ss, k)) return &ss->slot[k];
+    samples_request(ss, k);
+    return &EMPTY;
+}
+int samples_pending(tp_samples_t *ss) {
+    pthread_mutex_lock(&ss->mu);
+    int n = 0;
+    for (int k = 1; k < TP_NSAMPLES; k++) n += ss->state[k] == 1;
+    pthread_mutex_unlock(&ss->mu);
+    return n;
+}
 void samples_close(tp_samples_t *s) {
     if (!s) return;
+    if (s->threaded) {
+        pthread_mutex_lock(&s->mu);
+        s->quit = 1;
+        pthread_cond_signal(&s->cv);
+        pthread_mutex_unlock(&s->mu);
+        pthread_join(s->th, NULL);
+    }
+    pthread_mutex_destroy(&s->mu);
+    pthread_cond_destroy(&s->cv);
     for (int k = 0; k < TP_NSAMPLES; k++) { free(s->slot[k].data); free(s->mip[k]); }
     free(s);
 }
 const tp_sample_t *samples_get(tp_samples_t *s, int k) {
     if (k <= 0 || k >= TP_NSAMPLES) return &s->slot[0];
-    if (!s->slot[k].ready) synth_slot(s, k);
+    if (is_ready(s, k)) return &s->slot[k];
+    int mine = 0;
+    pthread_mutex_lock(&s->mu);
+    if (s->state[k] != 2 && !(s->state[k] == 1 && s->threaded)) { s->state[k] = 1; mine = 1; }
+    else if (s->state[k] == 1) {        /* queued for the worker: build it here and drop it from the queue */
+        for (int i = 0; i < s->qn; i++) if (s->q[i] == k) { s->q[i] = s->q[--s->qn]; mine = 1; break; }
+    }
+    pthread_mutex_unlock(&s->mu);
+    if (mine) { synth_slot(s, k); publish(s, k); }
+    else while (!is_ready(s, k)) { struct timespec t = {0, 200000}; nanosleep(&t, NULL); }   /* the worker is building it now */
     return &s->slot[k];
 }
 const float *samples_wave(tp_samples_t *s, int k, float inc) {
-    if (k <= 0 || k >= TP_NSAMPLES || !s->mip[k]) return NULL;
+    if (k <= 0 || k >= TP_NSAMPLES || !is_ready(s, k) || !s->mip[k]) return NULL;
     int l = 0;
     float hmax = 127;
     while (l < NMIP - 1 && hmax * inc > 0.45f) { l++; hmax = (float)(127 >> l); }
@@ -466,8 +539,9 @@ static void load_oneshot(tp_samples_t *ss, int k, const wav_t *w) {
     s->rate = 1;
     finish(s, x, n, 0);
     free(x);
-    s->user = s->ready = 1;
+    s->user = 1;
     ss->user++;
+    publish(ss, k);
 }
 /* One cycle of TP_WLEN points becomes wave slot `slot`: the same band-limited tables as the stand-ins. */
 static void set_cycle_f(tp_samples_t *ss, const float *cyc, int slot) {
@@ -489,8 +563,9 @@ static void set_cycle_f(tp_samples_t *ss, const float *cyc, int slot) {
     s->loop = 1;
     s->rate = TP_WAVE_HZ * TP_WLEN / SR;
     s->len = TP_WLEN;
-    s->user = s->ready = 1;
+    s->user = 1;
     ss->user++;
+    publish(ss, slot);
 }
 /* One cycle (L frames from a) of a WAV, resampled to TP_WLEN points. */
 static void set_cycle(tp_samples_t *ss, const wav_t *w, uint32_t a, uint32_t L, int slot) {

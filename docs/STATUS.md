@@ -20,7 +20,19 @@
 - Tests: `test/test_engine.c` passes under ASan (pitch, curves, decay timing, sound record and state round trips, every sample
   slot, the factory folder). `tools/test_port.sh` passes every check but one (below). armhf build OK (glibc 2.27).
 
-## Known limits
+## Device (2026-10-07, a Force)
+- Installed and registered; plays and the skin draws (the user's first listen).
+- Bench (mpc-vst-plugins docs/BENCH.md): voices about 20 % mean, p99 25 % of a block (idle 1.3 %); Q-Link sweep p99 34.7 %, worst
+  block 40.5 % -> WARN (a later run: 35.9 % / 39.5 %). Before the fix below the sweep was p99 735 %, worst 3361 % (FAIL): picking a sample synthesised its stand-in
+  on the calling thread (up to about 100 ms on the device) and bank changes read files.
+- Fix (output bit-identical over all 416 factory sounds): stand-ins are built by a worker thread (`samples_request`; the audio path
+  uses `samples_peek`, which never blocks; a note struck before its stand-in is ready plays it silent), and every bank's sounds are
+  read once when the folders are scanned. Remaining cost is the voice DSP.
+- Tried and dropped (2026-10-07): a selectable Quality "Eco" mode with polynomial exp2/tan for the cutoff (89 dB below the signal
+  against Exact). On the Force it gained nothing (voices 20.7 % vs 20.4 % mean, sweep p99 35.8 % vs 35.9 %): the library calls are
+  not the cost. Removed. The final build (md5 21446420...) is deployed.
+
+
 - **VS wave ROM (2026-10-07, offline):** `src/vsrom.c` reads the user's own VS program ROM chips (decoded in the Morpho-PE repo, its
   docs/FIRMWARE.md section 14) into the 96 wave slots. The slot map is a guess (ROM order, `vsmap.txt` overrides): only Sine, Sawtooth
   and Square (slots 0-2) are checked against the ROM; the manual lists names and no wave definitions, and the main OS holds no sample
@@ -48,7 +60,7 @@
 - `test_port.sh`: "six data wheel clicks step six" fails on Osc1 Freq (0-120): the wrapper rounds a 1.2-step click to 2 (the
   same wrapper limit Morpho-PE records).
 - Not done: the sequencer (out of scope), Beat-wide parameters, the mixer's delay/distortion/compressor, NRPN, writing sounds
-  back as SysEx. Not run on a device.
+  back as SysEx. Played on a Force once (2026-10-07).
 
 ## Next steps
 1. Device: install, bench (mpc-vst-plugins docs/BENCH.md), play, save/reload a project.

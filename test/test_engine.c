@@ -1,13 +1,14 @@
 #define _GNU_SOURCE
 /* Engine checks: every built-in sound plays, pitch is right, envelope timing follows the firmware's curves, the sound format
  * round-trips, state restores; with a folder argument, every sound in its .syx files decodes, loads and plays.
- *   gcc -O1 -g -fsanitize=address,undefined -Isrc -I../mpc-vst-plugins/wrapper -o /tmp/tp_test test/test_engine.c  src/[a-z]*.c -lm
+ *   gcc -O1 -g -fsanitize=address,undefined -Isrc -I../mpc-vst-plugins/wrapper -o /tmp/tp_test test/test_engine.c  src/[a-z]*.c -lm -lpthread
  *   /tmp/tp_test [folder with .syx [folder with a project .syx]]   (TP_WAV=dir also writes one WAV per sound there) */
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 #include "engine.h"
 #include "patch_tab.h"
 #include "presets.h"
@@ -21,7 +22,9 @@ static int fails;
 static const mpc_engine_t *E;
 static void setp(void *h, const char *k, int v) { char b[16]; snprintf(b, sizeof b, "%d", v); E->set_param(h, k, b); }
 static int getp(void *h, const char *k) { char b[64]; return E->get_param(h, k, b, sizeof b) > 0 ? atoi(b) : -1; }
-static void midi3(void *h, int a, int b, int c) { uint8_t m[3] = {(uint8_t)a, (uint8_t)b, (uint8_t)c}; E->midi(h, m, 3); }
+/* stand-ins are built on a worker thread: before a note, wait until the sound's are ready, as a player's first note after a change would be */
+static void settle(void *h) { for (int i = 0; i < 4000 && getp(h, "samples_busy") > 0; i++) { struct timespec t = {0, 1000000}; nanosleep(&t, NULL); } }
+static void midi3(void *h, int a, int b, int c) { uint8_t m[3] = {(uint8_t)a, (uint8_t)b, (uint8_t)c}; if ((a & 0xF0) == 0x90 && c) settle(h); E->midi(h, m, 3); }
 static double render(void *h, int blocks, float *peak, int16_t *keep) {
     int16_t o[256];
     double r = 0;

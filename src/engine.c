@@ -80,7 +80,9 @@ typedef struct {
     uint32_t rng;
 } voice_t;
 
-typedef struct { char name[40]; char path[PATHLEN]; int first; } bankref_t;   /* first: index of its first sound in the file */
+/* a bank's sounds, read once when the folder is scanned, so changing or browsing banks reads no file */
+typedef struct { uint8_t f[128][NFIELD]; char names[128][TSND_NAME]; uint8_t ch[128][2]; int n; } bcache_t;
+typedef struct { char name[40]; char path[PATHLEN]; int first; bcache_t *c; } bankref_t;   /* first: index of its first sound in the file */
 
 typedef struct {
     uint8_t f[NFIELD];
@@ -173,6 +175,18 @@ static void load_cb(void *c, const uint8_t f[NFIELD], const char *name, const ui
     sound_clamp(x->s->bankdata[k]);
     snprintf(x->s->banknames[k], TSND_NAME, "%s", name);
 }
+typedef struct { tp_t *s; int b0, b1, got; } cachectx_t;
+static void cache_cb(void *c, const uint8_t f[NFIELD], const char *name, const uint8_t ch[2]) {
+    cachectx_t *x = c;
+    int bi = x->b0 + x->got / 128, k = x->got % 128;
+    x->got++;
+    if (bi >= x->b1 || !x->s->banks[bi].c) return;
+    bcache_t *bc = x->s->banks[bi].c;
+    memcpy(bc->f[k], f, NFIELD);
+    snprintf(bc->names[k], TSND_NAME, "%s", name);
+    bc->ch[k][0] = ch[0]; bc->ch[k][1] = ch[1];
+    if (k + 1 > bc->n) bc->n = k + 1;
+}
 static int cmpstr(const void *a, const void *b) { return strcasecmp(*(char *const *)a, *(char *const *)b); }
 /* Every .syx with sounds becomes a bank (128 sounds each; a project of 512 sounds becomes four). */
 static void scan_dir(tp_t *s, const char *dir) {
@@ -199,12 +213,19 @@ static void scan_dir(tp_t *s, const char *dir) {
         snprintf(base, sizeof base, "%s", names[i]);
         char *dot = strrchr(base, '.');
         if (dot) *dot = 0;
+        int b0 = s->nbanks;
         for (int first = 0; first < lc.got && s->nbanks < MAXBANKS; first += 128) {
             bankref_t *r = &s->banks[s->nbanks++];
+            r->c = calloc(1, sizeof(bcache_t));
             if (lc.got > 128) snprintf(r->name, sizeof r->name, "%.30s %d", base, first / 128 + 1);
             else snprintf(r->name, sizeof r->name, "%s", base);
             snprintf(r->path, sizeof r->path, "%s", path);
             r->first = first;
+        }
+        if (s->nbanks > b0 && (buf = read_file(path, &len))) {
+            cachectx_t cc = {s, b0, s->nbanks, 0};
+            tsnd_scan_ex(buf, len, cache_cb, &cc);
+            free(buf);
         }
         free(names[i]);
     }
@@ -224,6 +245,9 @@ static void browse_load(tp_t *s, int bi) {
     if (bi == 0) {
         uint8_t f[NFIELD];
         for (int k = 0; k < presets_count() && k < 128; k++, s->bcount++) presets_apply(k, f, s->bnames[k]);
+    } else if (s->banks[bi].c) {
+        s->bcount = s->banks[bi].c->n;
+        for (int k = 0; k < s->bcount; k++) memcpy(s->bnames[k], s->banks[bi].c->names[k], TSND_NAME);
     } else {
         size_t len;
         uint8_t *buf = read_file(s->banks[bi].path, &len);
@@ -249,6 +273,14 @@ static void load_bank(tp_t *s, int bi) {
     for (int k = 0; k < 128; k++) { sound_init(s->bankdata[k], NULL); strcpy(s->banknames[k], "-"); }
     if (bi == 0) {
         for (int k = 0; k < presets_count() && k < 128; k++) presets_apply(k, s->bankdata[k], s->banknames[k]);
+    } else if (s->banks[bi].c) {
+        const bcache_t *bc = s->banks[bi].c;
+        for (int k = 0; k < bc->n; k++) {
+            memcpy(s->bankdata[k], bc->f[k], NFIELD);
+            sound_clamp(s->bankdata[k]);
+            snprintf(s->banknames[k], TSND_NAME, "%s", bc->names[k]);
+            s->chk[k][0] = bc->ch[k][0]; s->chk[k][1] = bc->ch[k][1];
+        }
     } else {
         size_t len;
         uint8_t *buf = read_file(s->banks[bi].path, &len);
@@ -261,13 +293,13 @@ static void load_bank(tp_t *s, int bi) {
     s->cur_bank = bi;
     prepare_kit(s);
 }
-static void prepare_samples(tp_t *s) {   /* synthesise this sound's stand-ins now, not at the first note */
-    samples_get(s->smp, sample_of(s, 0));
-    samples_get(s->smp, sample_of(s, 1));
+static void prepare_samples(tp_t *s) {   /* have this sound's stand-ins built (worker thread) before its first note */
+    samples_request(s->smp, sample_of(s, 0));
+    samples_request(s->smp, sample_of(s, 1));
 }
 static void prepare_kit(tp_t *s) {          /* the 16 pads' stand-ins, before they are played */
     if (!s->kit) return;
-    for (int p = 16 * s->kit_page; p < 16 * s->kit_page + 16; p++) { samples_get(s->smp, sample_of_f(s->bankdata[p], 0)); samples_get(s->smp, sample_of_f(s->bankdata[p], 1)); }
+    for (int p = 16 * s->kit_page; p < 16 * s->kit_page + 16; p++) { samples_request(s->smp, sample_of_f(s->bankdata[p], 0)); samples_request(s->smp, sample_of_f(s->bankdata[p], 1)); }
 }
 static void select_sound(tp_t *s, int p) {
     s->cur_prog = clampi(p, 0, 127);
@@ -352,7 +384,7 @@ static void voice_trigger(tp_t *s, voice_t *v, int on) {
     if (PV(v, P_OSC1_RESET)) { v->dco.ph[0] = 0; v->dco.flip = 0; }
     if (PV(v, P_OSC2_RESET)) v->dco.ph[1] = 0;
     for (int o = 0; o < 2; o++) {   /* samples start from their beginning (reverse: the end), waves keep running */
-        const tp_sample_t *sm = samples_get(s->smp, sample_of_f(v->f, o));
+        const tp_sample_t *sm = samples_peek(s->smp, sample_of_f(v->f, o));
         int rev = PV(v, o ? P_OSC4_REV : P_OSC3_REV);
         if (!sm->loop) v->spos[o] = rev ? sm->len - 1 : 0;
         v->sdone[o] = 0;
@@ -555,7 +587,7 @@ static void voice_control(tp_t *s, voice_t *v) {
     for (int o = 0; o < 2; o++) v->inc[o] = fminf(tp_note_hz(semis[o]) / FS, 0.45f);
     for (int o = 0; o < 2; o++) {
         int smp = sample_of_f(v->f, o);
-        const tp_sample_t *sm = samples_get(s->smp, smp);
+        const tp_sample_t *sm = samples_peek(s->smp, smp);
         float ratio = sm->fixed ? 1.0f : exp2f(semis[2 + o] / 12.0f);
         v->sinc[o] = sm->rate * ratio;
     }
@@ -602,7 +634,7 @@ static void voice_control(tp_t *s, voice_t *v) {
 static float sample_osc(tp_t *s, voice_t *v, int o) {
     int k = sample_of_f(v->f, o);
     if (!k || v->lvl34[o] <= 0 || v->sdone[o]) return 0;
-    const tp_sample_t *sm = samples_get(s->smp, k);
+    const tp_sample_t *sm = samples_peek(s->smp, k);
     float inc = v->sinc[o];
     const float *wt = samples_wave(s->smp, k, inc / TP_WLEN);
     if (wt) {          /* a single-cycle wave: spos is the phase in points */
@@ -718,6 +750,7 @@ static void tp_destroy(void *h) {
     tp_t *s = h;
     if (!s) return;
     samples_close(s->smp);
+    for (int i = 0; i < s->nbanks; i++) free(s->banks[i].c);
     free(s);
 }
 
@@ -1007,12 +1040,14 @@ static int tp_get_param(void *h, const char *k, char *b, int n) {
         if (!strncmp(k, "bank_slot_", 10)) {
             int bi = s->browse_bank / BANK_SLOTS * BANK_SLOTS + atoi(k + 10) - 1;
             if (on) return snprintf(b, z, "%d", bi == s->browse_bank) + 1;
-            return bi >= 0 && bi < s->nbanks ? snprintf(b, z, "%d %s", bi + 1, s->banks[bi].name) + 1 : snprintf(b, z, "") + 1;
+            if (bi < 0 || bi >= s->nbanks) { b[0] = 0; return 1; }
+            return snprintf(b, z, "%d %s", bi + 1, s->banks[bi].name) + 1;
         }
         if (!strncmp(k, "patch_slot_", 11)) {
             int idx = s->browse_page * SOUND_SLOTS + atoi(k + 11) - 1;
             if (on) return snprintf(b, z, "%d", s->browse_bank == s->cur_bank && idx == s->cur_prog) + 1;
-            return idx >= 0 && idx < s->bcount ? snprintf(b, z, "%03d %s", idx + 1, s->bnames[idx]) + 1 : snprintf(b, z, "") + 1;
+            if (idx < 0 || idx >= s->bcount) { b[0] = 0; return 1; }
+            return snprintf(b, z, "%03d %s", idx + 1, s->bnames[idx]) + 1;
         }
     }
     if (!strcmp(k, "bank_name")) return snprintf(b, z, "%s", s->banks[s->cur_bank].name) + 1;
@@ -1025,6 +1060,7 @@ static int tp_get_param(void *h, const char *k, char *b, int n) {
     if (!strcmp(k, "kit")) return snprintf(b, z, "%d", s->kit) + 1;
     if (!strcmp(k, "kit_base")) return snprintf(b, z, "%d", s->kit_base) + 1;
     if (!strcmp(k, "kit_page")) return snprintf(b, z, "%d", s->kit_page) + 1;
+    if (!strcmp(k, "samples_busy")) return snprintf(b, z, "%d", samples_pending(s->smp)) + 1;   /* stand-ins still being built (tests wait on it) */
     if (!strcmp(k, "status")) {
         int u = samples_user_count(s->smp);
         return (u ? snprintf(b, z, "%d banks, %d samples of yours", s->nbanks, u) : snprintf(b, z, "%d banks, stand-in samples", s->nbanks)) + 1;

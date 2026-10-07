@@ -12,6 +12,6 @@
     "root": "..",
     "sources": ["src/engine.c", "src/curves.c", "src/tsnd.c", "src/samples.c", "src/vsrom.c", "src/sample_names.c", "src/presets.c"],
     "cflags": ["-Isrc", "-O2"],
-    "libs": ["-lm"]
+    "libs": ["-lm", "-lpthread"]
   }
 }

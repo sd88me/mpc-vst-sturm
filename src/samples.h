@@ -36,11 +36,17 @@ typedef struct {
 typedef struct tp_samples tp_samples_t;
 tp_samples_t *samples_open(void);
 void samples_close(tp_samples_t *s);
-/* The slot, synthesised on first use (call from a non-audio thread when you can: a long slot takes a few ms). */
+/* The slot, synthesised on the calling thread if it is not built yet (blocking: not for the audio thread). */
 const tp_sample_t *samples_get(tp_samples_t *s, int slot);
+/* For the audio thread: the slot if it is built, else an empty one (silence) after asking the worker thread to build it. Never blocks. */
+const tp_sample_t *samples_peek(tp_samples_t *s, int slot);
+/* Asks the worker thread to build a slot (the latest request goes first). Never blocks. */
+void samples_request(tp_samples_t *s, int slot);
+/* Slots queued or being built. */
+int samples_pending(tp_samples_t *s);
 /* Scans a folder for WAVs as described above; returns slots replaced. */
 int samples_load_dir(tp_samples_t *s, const char *dir);
 /* The band-limited table (TP_WLEN points) of a wave slot for a phase increment of inc cycles per sample; NULL if the slot is
- * a one-shot or loop of audio. */
+ * a one-shot or loop of audio, or not built yet. */
 const float *samples_wave(tp_samples_t *s, int slot, float inc);
 int samples_user_count(const tp_samples_t *s);
