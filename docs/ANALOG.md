@@ -27,7 +27,7 @@ A Curtis filter (the CEM3320 family): four one-pole transconductance cells in se
 zero-delay feedback (the cascade is solved exactly, no half-sample delay to compensate), with the resonance fed back inverted from the
 last cell, or the second in 2-pole mode. It runs at 2x with the cutoff interpolated across the sample and a half-band decimator.
 Resonance 0..1 maps to feedback 4.6 res (4-pole, self-oscillates near the top) and 1.2 res (2-pole). Replaced Huovilainen's cascade
-(2026-10-07) when the kernels moved into mpc-analog; the old filter's table, for reference, was 60/263/1033/4400/17600 Hz. The stages'
+(2026-10-07) when the kernels moved into the shared analog engine; the old filter's table, for reference, was 60/263/1033/4400/17600 Hz. The stages'
 limiting lowers the pitch a little, so the cutoff is raised in proportion to res^4 (measured correction, 1.15 semitones at low cutoffs):
 
 | Setting | Self-oscillation | Expected |

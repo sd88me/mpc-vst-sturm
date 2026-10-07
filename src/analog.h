@@ -1,4 +1,4 @@
-/* The voice's analog half, modelled on its circuits (docs/ANALOG.md); the kernels are in mpc_analog.h (the shared mpc-analog header).
+/* The voice's analog half, modelled on its circuits (docs/ANALOG.md); the kernels are in mpc_analog.h (a copy of `analog/mpc_analog.h` in the Morpho-PE repo; update it with that repo's `analog/sync.sh`).
  *
  * DCOs (ma_dco_tick). The voice CPU runs each oscillator from a 32-bit timer at 40 MHz (period = the firmware's table entry) and, at the
  * end of every period, starts a second timer that holds a ~3 us reset pulse (voice OS 1.5: Timer 3/5 interrupts start Timer 1, PR1 = 120
