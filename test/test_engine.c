@@ -146,6 +146,25 @@ int main(int argc, char **argv) {
         if (!s->ready || (s->len < 2 && !samples_wave(sm, k, 0.01f))) bad++;
     }
     CHECK(bad == 0, "all %d sample slots synthesise (%d bad)", TP_NSAMPLES - 1, bad);
+    /* the shipped stand-in WAVs (standins/, run from the repo root) load into the same slots and sound like the built-ins */
+    tp_samples_t *fl = samples_open();
+    int nl = samples_load_dir(fl, "standins");
+    if (nl) {
+        int diff = 0;
+        for (int k = 1; k <= 10; k++) {
+            const tp_sample_t *a = samples_get(sm, k), *b = samples_get(fl, k);
+            if (!b->user || a->len != b->len || !b->loop || !b->fixed) { diff++; continue; }
+            for (int i = 0; i < a->len; i++) if (abs(a->data[i] - b->data[i]) > 2) { diff++; break; }
+        }
+        float wd = 0;
+        for (int k = TP_FIRST_WAVE - 1; k < TP_NSAMPLES; k++) {
+            const float *a = samples_wave(sm, k, 0), *b = samples_wave(fl, k, 0);
+            if (!a || !b || !samples_get(fl, k)->user) { diff++; continue; }
+            for (int i = 0; i < TP_WLEN; i++) wd = fmaxf(wd, fabsf(a[i] - b[i]));
+        }
+        CHECK(nl == 107 && diff == 0 && wd < 0.02f, "shipped stand-in WAVs: %d slots loaded (want 107), %d differ, wave diff %.4f", nl, diff, wd);
+    }
+    samples_close(fl);
     samples_close(sm);
     E->destroy(h);
 

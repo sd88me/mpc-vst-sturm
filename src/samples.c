@@ -468,6 +468,35 @@ static void load_oneshot(tp_samples_t *ss, int k, const wav_t *w) {
     s->user = s->ready = 1;
     ss->user++;
 }
+/* One cycle (L frames from a) becomes wave slot `slot`: resampled to TP_WLEN points, then the same band-limited tables as the stand-ins. */
+static void set_cycle(tp_samples_t *ss, const wav_t *w, uint32_t a, uint32_t L, int slot) {
+    float cyc[TP_WLEN], amp[129], phs[129], mean = 0;
+    for (int j = 0; j < TP_WLEN; j++) {
+        float p = (float)j * L / TP_WLEN;
+        uint32_t i0 = (uint32_t)p, i1 = i0 + 1 < L ? i0 + 1 : i0;
+        float x0 = wav_at(w, a + i0), x1 = wav_at(w, a + i1);
+        cyc[j] = x0 + (p - i0) * (x1 - x0);
+        mean += cyc[j];
+    }
+    mean /= TP_WLEN;
+    for (int h = 1; h <= 128; h++) {
+        float re = 0, im = 0;
+        for (int j = 0; j < TP_WLEN; j++) { float ph = TWO_PI * h * j / TP_WLEN; re += (cyc[j] - mean) * cosf(ph); im += (cyc[j] - mean) * sinf(ph); }
+        amp[h] = sqrtf(re * re + im * im) * 2 / TP_WLEN;
+        phs[h] = atan2f(re, im);
+    }
+    tp_sample_t *s = &ss->slot[slot];
+    free(s->data);
+    free(ss->mip[slot]);
+    memset(s, 0, sizeof *s);
+    ss->mip[slot] = malloc(sizeof(float) * NMIP * TP_WLEN);
+    if (ss->mip[slot]) build_mips(ss->mip[slot], amp, phs);
+    s->loop = 1;
+    s->rate = TP_WAVE_HZ * TP_WLEN / SR;
+    s->len = TP_WLEN;
+    s->user = s->ready = 1;
+    ss->user++;
+}
 static void load_cycles(tp_samples_t *ss, const wav_t *w) {
     uint32_t edges[258];
     int ne = 0;
@@ -486,32 +515,7 @@ static void load_cycles(tp_samples_t *ss, const wav_t *w) {
     for (int e = 0; e + 1 < ne && slot < TP_NSAMPLES; e++) {
         uint32_t a = edges[e], L = edges[e + 1] - a;
         if (L < 16) continue;
-        float cyc[TP_WLEN], amp[129], phs[129], mean = 0;
-        for (int j = 0; j < TP_WLEN; j++) {
-            float p = (float)j * L / TP_WLEN;
-            uint32_t i0 = (uint32_t)p, i1 = i0 + 1 < L ? i0 + 1 : i0;
-            float x0 = wav_at(w, a + i0), x1 = wav_at(w, a + i1);
-            cyc[j] = x0 + (p - i0) * (x1 - x0);
-            mean += cyc[j];
-        }
-        mean /= TP_WLEN;
-        for (int h = 1; h <= 128; h++) {      /* DFT, then the same band-limited tables as the stand-ins */
-            float re = 0, im = 0;
-            for (int j = 0; j < TP_WLEN; j++) { float ph = TWO_PI * h * j / TP_WLEN; re += (cyc[j] - mean) * cosf(ph); im += (cyc[j] - mean) * sinf(ph); }
-            amp[h] = sqrtf(re * re + im * im) * 2 / TP_WLEN;
-            phs[h] = atan2f(re, im);
-        }
-        tp_sample_t *s = &ss->slot[slot];
-        free(s->data);
-        free(ss->mip[slot]);
-        memset(s, 0, sizeof *s);
-        ss->mip[slot] = malloc(sizeof(float) * NMIP * TP_WLEN);
-        if (ss->mip[slot]) build_mips(ss->mip[slot], amp, phs);
-        s->loop = 1;
-        s->rate = TP_WAVE_HZ * TP_WLEN / SR;
-        s->len = TP_WLEN;
-        s->user = s->ready = 1;
-        ss->user++;
+        set_cycle(ss, w, a, L, slot);
         slot++;
     }
 }
@@ -549,7 +553,11 @@ int samples_load_dir(tp_samples_t *ss, const char *dir) {
                 snprintf(low, sizeof low, "%s", e->d_name);
                 for (char *p = low; *p; p++) *p = (char)tolower((unsigned char)*p);
                 if (strstr(low, "cycles")) load_cycles(ss, &w);
-                else { int k = slot_for_file(e->d_name); if (k > 0) load_oneshot(ss, k, &w); }
+                else {
+                    int k = slot_for_file(e->d_name);
+                    if (k == TP_FIRST_WAVE - 1) set_cycle(ss, &w, 0, w.frames, k);      /* the sine slot: the whole file is one cycle */
+                    else if (k > 0) load_oneshot(ss, k, &w);
+                }
             }
         }
         free(buf);

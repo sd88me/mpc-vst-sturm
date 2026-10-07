@@ -6,6 +6,7 @@
  * Your own audio replaces slots, read from the plugin's SAMPLES folder at load:
  *   - "<number> anything.wav" (e.g. "037 my 909.wav") or "<sample name>.wav" (e.g. "909ish.wav"): that slot, as a one-shot
  *     (a looping slot loops the whole file);
+ *   - "367 anything.wav" (the sine slot): the whole file is one cycle, looped at C3;
  *   - a WAV of single cycles (cue points between cycles, or 128-sample cycles) whose name contains "cycles": the wave slots in order.
  * Audio is 16-bit at 44.1 kHz inside; WAVs are resampled (linear) and mixed to mono. */
 #pragma once

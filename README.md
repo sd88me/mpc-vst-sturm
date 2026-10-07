@@ -35,6 +35,8 @@ The plugin makes `SYSEX` and `SAMPLES` folders inside its own folder on first lo
   drum and percussion one-shots, single-cycle waves), chosen by each slot's group and name. Replace any slot with a WAV in
   `SAMPLES`: `037 anything.wav` (slot number) or `909ish.wav` (slot name); a WAV with "cycles" in its name and one cycle between cue
   points fills the 96 wave slots (Prophet VS order) in turn.
+  The release ships the stand-ins that are plain signals as WAVs in `SAMPLES` (the ten noises, the sine and the 96 waves; the
+  `standins/` folder, made by `tools/render_samples.c`) so you can open, edit or overwrite them. The plugin sounds the same without them.
 
 ## Using it
 

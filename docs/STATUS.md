@@ -22,8 +22,14 @@
 
 ## Known limits
 - **No real samples.** The instrument's sample bank is not in any public file; oscillators 3/4 play stand-ins of our own unless
-  you put WAVs in `SAMPLES/`. The factory sounds lean on the analog half (only a handful use drum samples), so most of them are
-  close in kind; the sample-based ones are not.
+  you put WAVs in `SAMPLES/`. The plain-signal stand-ins (ten noises, the sine, the 96 waves) also ship as WAVs (`standins/`,
+  `tools/render_samples.c`, checked by the test); the drum and percussion ones are generated in code only. How much depends on
+  it (counted with the sample, level and bank fields, 2026-10-07): in the 1.4 factory sounds 119 of 416 use a PCM sample (111 of
+  them a noise, which is covered) and about 20 a recognisable drum hit; 32 more use only the VS waves. In the 1.0 factory sounds
+  324 of 452 use a PCM sample (about 200 distinct, mostly drum machine hits, hats and cymbals), so those sound least like the
+  original. The 1.0 and 1.4 sample lists are the same (the names land on sensible sounds).
+- The 1.0 factory sounds decode, but `key_assign` runs to 4 in 231 of 452 (1.5 firmware max 1): its meaning changed between
+  versions and is not mapped yet; `aenv_r` is 127 against a maximum of 123 in 3.
 - Analog parts are modelled from their circuits, not measured (docs/ANALOG.md): cutoff scale, high-pass law, feedback gain,
   resonance range.
 - Silent at C3: Dat Kick, Alien Loop and three others: they depend on modulation of pulse widths at 0/99 or on loop gains not
@@ -38,4 +44,4 @@
 1. Device: install, bench (mpc-vst-plugins docs/BENCH.md), play, save/reload a project.
 2. Listen against the hardware (or recordings) and fit the analog guesses.
 3. Kit mode on a device: MPC's pad notes, choke groups (the instrument's Choke 1/2 are beat settings, not in the sound), per-pad pan.
-4. README screenshots, catalog entry (`release.py --repo sd88me/mpc-vst-sturm --license MIT --id sturm`).
+4. README screenshots, catalog entry (`release.py --repo sd88me/mpc-vst-sturm --license MIT --id sturm --extra standins:SAMPLES`).
