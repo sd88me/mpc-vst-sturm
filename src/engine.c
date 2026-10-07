@@ -58,7 +58,7 @@ typedef struct {
     int note, vel, gated, sounding;
     unsigned age;
     float key[4], tgt, from;       /* per oscillator glided key, the note it glides to, where it came from */
-    dco_t dco;                     /* osc 1, osc 2, sub */
+    ma_dco_t dco;                     /* osc 1, osc 2, sub */
     cem_t lpf;
     double spos[2];                /* sample oscillators: position (frames, or cycles for waves) */
     int sdone[2];
@@ -576,9 +576,9 @@ static void voice_audio(tp_t *s, voice_t *v, float *out, int n) {
     for (int i = 0; i < n; i++) {
         float t = (i + 1) / (float)n;
         /* the DCOs (analog.h): osc 2's reset discharges osc 1 when synced; the sub is clocked by osc 1 */
-        dco_osc_t d1 = {v->shape[0], v->duty[0], v->inc[0]}, d2 = {v->shape[1], v->duty[1], v->inc[1]};
+        ma_dco_osc_t d1 = {v->shape[0], v->duty[0], v->inc[0]}, d2 = {v->shape[1], v->duty[1], v->inc[1]};
         float dco[3];
-        dco_tick(&v->dco, &d1, &d2, sync, dco);
+        ma_dco_tick(&v->dco, &d1, &d2, sync, dco);
         float o1 = dco[0], o2 = dco[1], sub = dco[2] * v->sub;
         float s3 = sample_osc(s, v, 0) * v->lvl34[0], s4 = sample_osc(s, v, 1) * v->lvl34[1];
         float digi = s3 + s4;

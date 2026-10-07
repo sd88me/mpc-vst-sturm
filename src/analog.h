@@ -11,20 +11,7 @@
  * Low-pass. A Curtis 2/4-pole filter (the CEM3320 family): four transconductance one-pole cells, each a tanh, with the resonance
  * fed back inverted from the 4th cell (4-pole) or the 2nd (2-pole, where it can't self-oscillate), run at twice the sample rate. */
 #pragma once
-
-typedef struct {
-    float ph[2];          /* ramp positions 0..1 */
-    int flip;             /* sub oscillator flip-flop */
-    float y[3], r[3];     /* last naive outputs (osc 1, osc 2, sub) and the BLEP residual owed to them */
-} dco_t;
-
-typedef struct {
-    int shape;            /* 0 off, 1 saw, 2 tri, 3 saw-tri, 4 pulse, 5 flat pulse */
-    float duty, inc;
-} dco_osc_t;
-
-/* One sample: osc 1, osc 2, sub (one sample late, band-limited). */
-void dco_tick(dco_t *d, const dco_osc_t *o1, const dco_osc_t *o2, int sync, float out[3]);
+#include "mpc_analog.h"
 
 typedef struct { float s[4], t[4], fb_prev; } cem_t;
 /* One output sample from one input sample at 44.1 kHz: cutoff in Hz, res 0..1, four = 4-pole. Oversampled 2x inside. */
