@@ -26,6 +26,8 @@
 #define CTL 9
 #define DT (CTL / FS)
 #define MAXBANKS 64
+#define BANK_SLOTS 22      /* BANKS page: tiles in the bank list and in the sound list (a page of the browsed bank) */
+#define SOUND_SLOTS 32
 #define PATHLEN 512
 
 /* the instrument's modulation lists (manual p. 78-79; the main OS has the same lists) */
@@ -55,6 +57,8 @@ enum { E_PITCH, E_LP, E_AMP, E_AUX1, E_AUX2 };
 typedef struct {
     uint8_t f[NFIELD];             /* the sound this voice plays: the edited one, or its kit pad's */
     int pad, src_note;             /* kit pad (-1: the edited sound), the note that started it */
+    float cgain;                   /* a choked voice fades out through this */
+    int chok;
     int note, vel, gated, sounding;
     unsigned age;
     float key[4], tgt, from;       /* per oscillator glided key, the note it glides to, where it came from */
@@ -94,8 +98,11 @@ typedef struct {
     tp_samples_t *smp;
     bankref_t banks[MAXBANKS];
     int nbanks, cur_bank, cur_prog;
+    int browse_bank, browse_page, bcount;       /* BANKS page: the bank being looked at (loads nothing), its page, its sound count */
+    char bnames[128][TSND_NAME];
     uint8_t bankdata[128][NFIELD];
     char banknames[128][TSND_NAME];
+    uint8_t chk[128][3];            /* per bank sound: Choke 1, Choke 2 (a sound 1-32 of its beat, 0 none), Voice Assign (0 = any voice, 1-6) */
     char dir[PATHLEN];
     int display_rev;
     uint32_t rng;
@@ -157,10 +164,11 @@ static uint8_t *read_file(const char *path, size_t *len) {
 }
 typedef struct { tp_t *s; int skip, got; } loadctx_t;
 static void count_cb(void *c, const uint8_t f[NFIELD], const char *name) { (void)f; (void)name; ((loadctx_t *)c)->got++; }
-static void load_cb(void *c, const uint8_t f[NFIELD], const char *name) {
+static void load_cb(void *c, const uint8_t f[NFIELD], const char *name, const uint8_t ch[2]) {
     loadctx_t *x = c;
     int k = x->got++ - x->skip;
     if (k < 0 || k >= 128) return;
+    x->s->chk[k][0] = ch[0]; x->s->chk[k][1] = ch[1]; x->s->chk[k][2] = 0;
     memcpy(x->s->bankdata[k], f, NFIELD);
     sound_clamp(x->s->bankdata[k]);
     snprintf(x->s->banknames[k], TSND_NAME, "%s", name);
@@ -201,9 +209,43 @@ static void scan_dir(tp_t *s, const char *dir) {
         free(names[i]);
     }
 }
+typedef struct { tp_t *s; int skip, got; } namectx_t;
+static void name_cb(void *c, const uint8_t f[NFIELD], const char *name) {
+    namectx_t *x = c;
+    int k = x->got++ - x->skip;
+    (void)f;
+    if (k >= 0 && k < 128) snprintf(x->s->bnames[k], TSND_NAME, "%s", name);
+}
+/* The sound names of a bank without loading it, for the BANKS page. */
+static void browse_load(tp_t *s, int bi) {
+    bi = clampi(bi, 0, s->nbanks - 1);
+    s->browse_bank = bi;
+    s->bcount = 0;
+    if (bi == 0) {
+        uint8_t f[NFIELD];
+        for (int k = 0; k < presets_count() && k < 128; k++, s->bcount++) presets_apply(k, f, s->bnames[k]);
+    } else {
+        size_t len;
+        uint8_t *buf = read_file(s->banks[bi].path, &len);
+        if (buf) {
+            namectx_t nc = {s, s->banks[bi].first, 0};
+            tsnd_scan(buf, len, name_cb, &nc);
+            s->bcount = clampi(nc.got - nc.skip, 0, 128);
+            free(buf);
+        }
+    }
+    s->browse_page = clampi(s->browse_page, 0, s->bcount ? (s->bcount - 1) / SOUND_SLOTS : 0);
+    s->display_rev++;
+}
+/* The page follows the loaded sound: after any change of bank or sound the browsed bank and page are the current ones. */
+static void browse_follow(tp_t *s) {
+    if (s->browse_bank != s->cur_bank || !s->bcount) browse_load(s, s->cur_bank);
+    s->browse_page = s->cur_prog / SOUND_SLOTS;
+}
 static void prepare_kit(tp_t *s);
 static void load_bank(tp_t *s, int bi) {
     bi = clampi(bi, 0, s->nbanks - 1);
+    memset(s->chk, 0, sizeof s->chk);
     for (int k = 0; k < 128; k++) { sound_init(s->bankdata[k], NULL); strcpy(s->banknames[k], "-"); }
     if (bi == 0) {
         for (int k = 0; k < presets_count() && k < 128; k++) presets_apply(k, s->bankdata[k], s->banknames[k]);
@@ -212,7 +254,7 @@ static void load_bank(tp_t *s, int bi) {
         uint8_t *buf = read_file(s->banks[bi].path, &len);
         if (buf) {
             loadctx_t lc = {s, s->banks[bi].first, 0};
-            tsnd_scan(buf, len, load_cb, &lc);
+            tsnd_scan_ex(buf, len, load_cb, &lc);
             free(buf);
         }
     }
@@ -232,6 +274,7 @@ static void select_sound(tp_t *s, int p) {
     memcpy(s->f, s->bankdata[s->cur_prog], NFIELD);
     snprintf(s->name, sizeof s->name, "%s", s->banknames[s->cur_prog]);
     prepare_samples(s);
+    browse_follow(s);
     s->display_rev++;
 }
 
@@ -302,6 +345,8 @@ static void voice_trigger(tp_t *s, voice_t *v, int on) {
     for (int e = 0; e < 5; e++) env_gate(&v->env[e], on, adsr);
     if (!on) return;
     v->sounding = 1;
+    v->chok = 0;
+    v->cgain = 1;
     static const int rs[2] = {P_LFO1_RESTART, P_LFO2_RESTART};
     for (int l = 0; l < 2; l++) if (PV(v, rs[l]) == 1) { v->lfo[l].ph = 0; v->lfo[l].hold = rnd(&v->rng); }
     if (PV(v, P_OSC1_RESET)) { v->dco.ph[0] = 0; v->dco.flip = 0; }
@@ -351,6 +396,19 @@ static int kit_pad(const tp_t *s, int note) {
     int p = note - s->kit_base;
     return s->kit && p >= 0 && p < 16 ? 16 * s->kit_page + p : -1;   /* the bank slot it plays */
 }
+/* Each sound of a beat can choke two others of the beat (a closed hat cuts the open one; a sound that chokes itself cuts its own
+ * last note): the pads' sounding voices fade out in a few milliseconds (manual p. 42). */
+static void choke_pads(tp_t *s, int pad) {
+    int base = pad / 32 * 32;
+    for (int c = 0; c < 2; c++) {
+        int t = s->chk[pad][c];
+        if (t < 1 || t > 32) continue;
+        for (int i = 0; i < s->nv; i++) {
+            voice_t *v = &s->v[i];
+            if (v->sounding && !v->chok && v->pad == base + t - 1) { v->chok = 1; if (v->gated) voice_release(s, v); }
+        }
+    }
+}
 static void note_on(tp_t *s, int note, int vel) {
     s->deferred[note & 127] = 0;
     int pad = kit_pad(s, note);
@@ -358,8 +416,10 @@ static void note_on(tp_t *s, int note, int vel) {
     if (pad >= 0) {                                /* a pad: its sound at its own pitch, on the next free (else oldest) voice */
         if (s->kit == 2 && pad != s->cur_prog) { s->cur_prog = pad; memcpy(s->f, s->bankdata[pad], NFIELD);
             snprintf(s->name, sizeof s->name, "%s", s->banknames[pad]); s->display_rev++; }
+        choke_pads(s, pad);
         voice_t *best = NULL;
-        for (int i = 0; i < s->nv; i++) { voice_t *v = &s->v[(s->rr + i) % s->nv]; if (!v->sounding) { best = v; break; } }
+        if (s->chk[pad][2]) best = &s->v[(s->chk[pad][2] - 1) % s->nv];     /* Voice Assign: always this voice (stealing it) */
+        for (int i = 0; !best && i < s->nv; i++) { voice_t *v = &s->v[(s->rr + i) % s->nv]; if (!v->sounding) { best = v; break; } }
         if (!best) { best = &s->v[0]; for (int i = 1; i < s->nv; i++) if (s->v[i].age < best->age) best = &s->v[i]; }
         s->rr = (int)(best - s->v) + 1;
         best->pad = pad;
@@ -371,7 +431,8 @@ static void note_on(tp_t *s, int note, int vel) {
     if (s->nheld < 16) { s->held[s->nheld].note = note; s->held[s->nheld].vel = vel; s->nheld++; }
     if (s->mono) { s->v[0].pad = -1; mono_update(s); return; }
     voice_t *best = NULL;
-    for (int i = 0; i < s->nv; i++) {             /* the next voice that is silent, else the oldest */
+    if (s->chk[s->cur_prog][2]) best = &s->v[(s->chk[s->cur_prog][2] - 1) % s->nv];
+    for (int i = 0; !best && i < s->nv; i++) {             /* the next voice that is silent, else the oldest */
         voice_t *v = &s->v[(s->rr + i) % s->nv];
         if (!v->sounding) { best = v; break; }
     }
@@ -447,7 +508,7 @@ static void voice_control(tp_t *s, voice_t *v) {
     float eamt[5];
     for (int e = 0; e < 5; e++) {
         float a = e == E_AMP ? (float)PV(v, ed[e][1]) : S127V(v, ed[e][1]);
-        a = env_amount(a + dp[D_ENVAMT + e] + dp[D_ENVAMT + 5], PV(v, ed[e][2]), vel);
+        a = env_amount(a, PV(v, ed[e][2]), vel) + dp[D_ENVAMT + e] + dp[D_ENVAMT + 5];
         eamt[e] = e == E_AMP ? clampf(a, 0, 127) : a;
         if (ed[e][0] >= 0) { int dst = PV(v, ed[e][0]); if (dst > 0 && dst < NDEST) d[dst] += env[e] * eamt[e]; }
     }
@@ -530,7 +591,7 @@ static void voice_control(tp_t *s, voice_t *v) {
 
     /* VCA: level + amp envelope x amount */
     v->vca_prev = v->vca;
-    v->vca = clampf((PV(v, P_VCA_LEVEL) + env[E_AMP] * eamt[E_AMP] + d[D_VCA]) / 127.0f, 0, 1);
+    v->vca = clampf((PV(v, P_VCA_LEVEL) + env[E_AMP] * eamt[E_AMP] + d[D_VCA]) / 127.0f, 0, 1) * v->cgain;
     /* pan (the mixer's, a host parameter here) */
     float pos = clampf(s->pan + d[D_PAN], 0, 127) / 127.0f;
     v->panl = cosf(pos * 1.5707963f) * 1.41421356f;
@@ -593,6 +654,9 @@ static void voice_audio(tp_t *s, voice_t *v, float *out, int n) {
         float hz = tp_lpf_hz(semis);
         float y = ma_ota2x(&v->lpf, HB_B, in * 0.7f, hz, v->res, four, FS) * 1.4f;
         v->hz_prev = hz;
+        if (!(fabsf(y) < 64)) {         /* a runaway or NaN (an extreme resonance and modulation) must not outlive the note: it would silence the voice for good */
+            memset(&v->lpf, 0, sizeof v->lpf); v->hp[0] = v->hp[1] = 0; v->last_l = 0; y = 0;
+        }
         /* 2-pole highpass (state variable, Butterworth) */
         if (hg > 0) {
             float hp = (y - (1.4142f + hg) * v->hp[0] - v->hp[1]) * ha;
@@ -647,7 +711,7 @@ static void *tp_create(const char *dir) {
         samples_load_dir(s->smp, sub);
     }
     load_bank(s, 0);
-    select_sound(s, 0);
+    select_sound(s, 0);       /* also points the BANKS page at it */
     return s;
 }
 static void tp_destroy(void *h) {
@@ -691,7 +755,7 @@ static void tp_midi(void *h, const uint8_t *m, int len) {
         case 7: s->cc_vol = d2 / 127.0f; break;
         case 11: s->t_expr = d2 / 127.0f; break;
         case 16: case 17: case 18: case 19: s->t_sl[d1 - 16] = d2 / 127.0f; break;
-        case 32: if (d2 < s->nbanks) { load_bank(s, d2); s->display_rev++; } break;
+        case 32: if (d2 < s->nbanks) { load_bank(s, d2); browse_follow(s); s->display_rev++; } break;
         case 64:
             s->pedal = d2 >= 64;
             if (!s->pedal) for (int n = 0; n < 128; n++) if (s->deferred[n]) { s->deferred[n] = 0; note_off(s, n); }
@@ -719,11 +783,13 @@ static void tp_render(void *h, int16_t *out, int frames) {
         for (int i = 0; i < MAXV; i++) {
             voice_t *v = &s->v[i];
             if (!v->sounding) continue;
+            if (v->chok) v->cgain *= 0.8f;        /* a choked voice: gone in about 6 ms */
             voice_control(s, v);
             voice_audio(s, v, buf, n);
             /* a voice is free once its amp envelope has finished (AD mode: even with the key held) and nothing else sounds */
-            if (v->env[E_AMP].st == ST_IDLE && PV(v, P_VCA_LEVEL) == 0 && fabsf(v->last_l) < 1e-4f) {
+            if ((v->chok && v->cgain < 0.003f) || (v->env[E_AMP].st == ST_IDLE && PV(v, P_VCA_LEVEL) == 0 && fabsf(v->last_l) < 1e-4f)) {
                 v->sounding = 0;
+                v->chok = 0;
                 memset(&v->lpf, 0, sizeof v->lpf);
                 memset(v->hp, 0, sizeof v->hp);
                 v->last_l = 0;
@@ -809,8 +875,18 @@ static void state_set(tp_t *s, const char *val) {
     for (int k = 16 * s->kit_page; k < 16 * s->kit_page + 16 && s->kit && *q; k++)
         if (!read_sound(q, s->bankdata[k], s->banknames[k], &q)) break;
     if (s->kit) memcpy(s->f, s->bankdata[s->cur_prog], NFIELD);
+    if (!strncmp(q, "TC", 2)) {
+        unsigned a, c2, v;
+        const char *t = q + 2;
+        int off;
+        for (int k = 16 * s->kit_page; k < 16 * s->kit_page + 17 && sscanf(t, " %2x%2x%2x%n", &a, &c2, &v, &off) == 3; k++, t += off) {
+            int idx = k < 16 * s->kit_page + 16 ? k : s->cur_prog;
+            s->chk[idx][0] = (uint8_t)clampi((int)a, 0, 32); s->chk[idx][1] = (uint8_t)clampi((int)c2, 0, 32); s->chk[idx][2] = (uint8_t)clampi((int)v, 0, 6);
+        }
+    }
     prepare_samples(s);
     prepare_kit(s);
+    browse_follow(s);
     s->display_rev++;
 }
 static int put_sound(char *b, int o, int n, const uint8_t *f, const char *name) {
@@ -823,7 +899,14 @@ static int state_get(tp_t *s, char *b, int n) {
                      s->mono, s->root, s->kit_page);
     o = put_sound(b, o, n, s->f, s->name);
     for (int k = 16 * s->kit_page; k < 16 * s->kit_page + 16 && s->kit; k++) o = put_sound(b, o, n, s->bankdata[k], s->banknames[k]);
-    return o + 1;
+    int any = 0;       /* choke and voice assign of the kit page's pads and of the edited sound, only when set */
+    for (int k = 0; k < 128; k++) if (s->chk[k][0] || s->chk[k][1] || s->chk[k][2]) any = 1;
+    if (any && o + 16 < n) {
+        o += snprintf(b + o, (size_t)(n - o), "TC");
+        for (int k = 16 * s->kit_page; k < 16 * s->kit_page + 16; k++) o += snprintf(b + o, (size_t)(n - o), " %02x%02x%02x", s->chk[k][0], s->chk[k][1], s->chk[k][2]);
+        o += snprintf(b + o, (size_t)(n - o), " %02x%02x%02x\n", s->chk[s->cur_prog][0], s->chk[s->cur_prog][1], s->chk[s->cur_prog][2]);
+    }
+    return o < n ? o + 1 : n;
 }
 
 static void tp_set_param(void *h, const char *k, const char *val) {
@@ -834,6 +917,22 @@ static void tp_set_param(void *h, const char *k, const char *val) {
     int x = atoi(val);
     if (!strcmp(k, "bank")) { if (x != s->cur_bank && x < s->nbanks) { load_bank(s, x); select_sound(s, 0); } }
     else if (!strcmp(k, "program")) { if (x != s->cur_prog) select_sound(s, x); }
+    else if (!strcmp(k, "browse_bank")) { if (x != s->browse_bank && x >= 0 && x < s->nbanks) { s->browse_page = 0; browse_load(s, x); } }
+    else if (!strcmp(k, "patch_page")) { s->browse_page = clampi(x, 0, s->bcount ? (s->bcount - 1) / SOUND_SLOTS : 0); s->display_rev++; }
+    else if (!strncmp(k, "bank_slot_", 10)) {      /* a tap on a bank tile: browse it (loads nothing) */
+        int b = s->browse_bank / BANK_SLOTS * BANK_SLOTS + atoi(k + 10) - 1;
+        if (b >= 0 && b < s->nbanks) { s->browse_page = 0; browse_load(s, b); }
+    }
+    else if (!strncmp(k, "patch_slot_", 11)) {      /* a tap on a sound tile: load that bank and sound */
+        int idx = s->browse_page * SOUND_SLOTS + atoi(k + 11) - 1;
+        if (idx >= 0 && idx < s->bcount) {
+            if (s->browse_bank != s->cur_bank) load_bank(s, s->browse_bank);
+            select_sound(s, idx);
+        }
+    }
+    else if (!strcmp(k, "choke1")) s->chk[s->cur_prog][0] = (uint8_t)clampi(x, 0, 32);
+    else if (!strcmp(k, "choke2")) s->chk[s->cur_prog][1] = (uint8_t)clampi(x, 0, 32);
+    else if (!strcmp(k, "voice_assign")) s->chk[s->cur_prog][2] = (uint8_t)clampi(x, 0, 6);
     else if (!strcmp(k, "osc3_sample")) set_sample(s, 0, x);
     else if (!strcmp(k, "osc4_sample")) set_sample(s, 1, x);
     else if (!strcmp(k, "pan")) s->pan = clampi(x, 0, 127);
@@ -863,6 +962,17 @@ static int tp_get_param(void *h, const char *k, char *b, int n) {
         int i = find_key(base);
         if (i >= 0) return format_value(s, i, b, n);
         if (!strcmp(base, "bank")) return snprintf(b, z, "%d %s", s->cur_bank + 1, s->banks[s->cur_bank].name) + 1;
+        if (!strcmp(base, "choke1") || !strcmp(base, "choke2")) {
+            int c = s->chk[s->cur_prog][base[5] == '2'], t = s->cur_prog / 32 * 32 + c - 1;
+            if (!c) return snprintf(b, z, "Off") + 1;
+            return snprintf(b, z, "%d %s", c, t < 128 ? s->banknames[t] : "") + 1;
+        }
+        if (!strcmp(base, "voice_assign")) {
+            int v = s->chk[s->cur_prog][2];
+            return v ? snprintf(b, z, "Voice %d", v) + 1 : snprintf(b, z, "Any voice") + 1;
+        }
+        if (!strcmp(base, "browse_bank")) return snprintf(b, z, "%d %s", s->browse_bank + 1, s->banks[s->browse_bank].name) + 1;
+        if (!strcmp(base, "patch_page")) return snprintf(b, z, "Page %d/%d", s->browse_page + 1, s->bcount ? (s->bcount - 1) / SOUND_SLOTS + 1 : 1) + 1;
         if (!strcmp(base, "program")) return snprintf(b, z, "%03d %s", s->cur_prog + 1, s->banknames[s->cur_prog]) + 1;
         if (!strcmp(base, "osc3_sample") || !strcmp(base, "osc4_sample")) {
             int o = base[3] == '4', sm = sample_of(s, o);
@@ -883,6 +993,29 @@ static int tp_get_param(void *h, const char *k, char *b, int n) {
     if (!strcmp(k, "bank")) return snprintf(b, z, "%d", s->cur_bank) + 1;
     if (!strcmp(k, "program")) return snprintf(b, z, "%d", s->cur_prog) + 1;
     if (!strcmp(k, "patch_name")) return snprintf(b, z, "%s", s->name) + 1;
+    if (!strcmp(k, "choke1")) return snprintf(b, z, "%d", s->chk[s->cur_prog][0]) + 1;
+    if (!strcmp(k, "choke2")) return snprintf(b, z, "%d", s->chk[s->cur_prog][1]) + 1;
+    if (!strcmp(k, "voice_assign")) return snprintf(b, z, "%d", s->chk[s->cur_prog][2]) + 1;
+    if (!strcmp(k, "browse_bank")) return snprintf(b, z, "%d", s->browse_bank) + 1;
+    if (!strcmp(k, "patch_page")) return snprintf(b, z, "%d", s->browse_page) + 1;
+    if (!strcmp(k, "bank_range")) {
+        int a = s->browse_bank / BANK_SLOTS * BANK_SLOTS;
+        return snprintf(b, z, "Banks %d-%d of %d", a + 1, a + BANK_SLOTS < s->nbanks ? a + BANK_SLOTS : s->nbanks, s->nbanks) + 1;
+    }
+    {
+        size_t kl2 = strlen(k);
+        int on = kl2 > 3 && !strcmp(k + kl2 - 3, "_on");
+        if (!strncmp(k, "bank_slot_", 10)) {
+            int bi = s->browse_bank / BANK_SLOTS * BANK_SLOTS + atoi(k + 10) - 1;
+            if (on) return snprintf(b, z, "%d", bi == s->browse_bank) + 1;
+            return bi >= 0 && bi < s->nbanks ? snprintf(b, z, "%d %s", bi + 1, s->banks[bi].name) + 1 : snprintf(b, z, "") + 1;
+        }
+        if (!strncmp(k, "patch_slot_", 11)) {
+            int idx = s->browse_page * SOUND_SLOTS + atoi(k + 11) - 1;
+            if (on) return snprintf(b, z, "%d", s->browse_bank == s->cur_bank && idx == s->cur_prog) + 1;
+            return idx >= 0 && idx < s->bcount ? snprintf(b, z, "%03d %s", idx + 1, s->bnames[idx]) + 1 : snprintf(b, z, "") + 1;
+        }
+    }
     if (!strcmp(k, "bank_name")) return snprintf(b, z, "%s", s->banks[s->cur_bank].name) + 1;
     if (!strcmp(k, "osc3_sample")) return snprintf(b, z, "%d", sample_of(s, 0)) + 1;
     if (!strcmp(k, "osc4_sample")) return snprintf(b, z, "%d", sample_of(s, 1)) + 1;

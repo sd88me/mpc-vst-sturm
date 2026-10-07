@@ -61,7 +61,25 @@ static int plausible(const uint8_t *rec, uint8_t f[NFIELD], char name[TSND_NAME]
     return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
 }
 
+/* A beat's per-sound settings are 32 records of 30 bytes before its 32 sounds (docs/FIRMWARE.md section 5): bytes 0-5 are FF FF 00 00 00 00,
+ * byte 6 volume, 7 pan, 12 and 13 the two Choke targets (a sound number 1-32 in the beat, 0 none). Returns the offset of the last such
+ * block that ends before `end`, or -1. */
+static int find_block(const uint8_t *u, int end) {
+    for (int i = end - 960; i >= 0 && i > end - 16000; i--) {
+        if (i >= 30 && !memcmp(u + i - 30, "\xff\xff\0\0\0\0", 6)) continue;
+        int ok = 1;
+        for (int k = 0; k < 32 && ok; k++) ok = !memcmp(u + i + 30 * k, "\xff\xff\0\0\0\0", 6);
+        if (ok) return i;
+    }
+    return -1;
+}
+typedef struct { tsnd_fn fn; void *ctx; } plain_t;
+static void plain_cb(void *c, const uint8_t f[NFIELD], const char *name, const uint8_t ch[2]) { plain_t *p = c; (void)ch; p->fn(p->ctx, f, name); }
 int tsnd_scan(const uint8_t *buf, size_t len, tsnd_fn fn, void *ctx) {
+    plain_t p = {fn, ctx};
+    return tsnd_scan_ex(buf, len, plain_cb, &p);
+}
+int tsnd_scan_ex(const uint8_t *buf, size_t len, tsnd_fn_ex fn, void *ctx) {
     int count = 0;
     for (size_t i = 0; i + 6 < len; i++) {
         if (buf[i] != 0xF0 || buf[i + 1] != 0x01 || buf[i + 2] != 0x28 || (buf[i + 3] != 0x63 && buf[i + 3] != 0x61)) continue;
@@ -86,13 +104,22 @@ int tsnd_scan(const uint8_t *buf, size_t len, tsnd_fn fn, void *ctx) {
                     strncpy(name, slash ? slash + 1 : "Sound", TSND_NAME - 1);
                     name[TSND_NAME - 1] = 0;
                 }
-                fn(ctx, f, name);
+                const uint8_t none[2] = {0, 0};
+                fn(ctx, f, name, none);
                 count++;
             }
         } else {
+            int run = 0, blk = -1;      /* run: position in a beat's 32 consecutive sounds */
             for (int o = pathlen; o + TSND_BYTES <= got;) {
-                if (plausible(u + o, f, name)) { fn(ctx, f, name); count++; o += TSND_BYTES; }
-                else o++;
+                if (plausible(u + o, f, name)) {
+                    if (run == 0) blk = find_block(u, o);
+                    uint8_t ch[2] = {0, 0};
+                    if (blk >= 0 && run < 32) { ch[0] = u[blk + 30 * run + 12]; ch[1] = u[blk + 30 * run + 13]; if (ch[0] > 32) ch[0] = 0; if (ch[1] > 32) ch[1] = 0; }
+                    fn(ctx, f, name, ch);
+                    count++;
+                    run = (run + 1) % 32;
+                    o += TSND_BYTES;
+                } else { o++; run = 0; }
             }
         }
         free(u);

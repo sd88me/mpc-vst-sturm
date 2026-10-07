@@ -35,14 +35,24 @@ The plugin makes `SYSEX` and `SAMPLES` folders inside its own folder on first lo
   drum and percussion one-shots, single-cycle waves), chosen by each slot's group and name. Replace any slot with a WAV in
   `SAMPLES`: `037 anything.wav` (slot number) or `909ish.wav` (slot name); a WAV with "cycles" in its name and one cycle between cue
   points fills the 96 wave slots (Prophet VS order) in turn.
+  **Prophet VS wave ROM**: the digital oscillators' single-cycle waves are the Prophet VS's. If you have its program ROM chips (the two
+  27256 images, or one 64 KB image) put them in `SAMPLES`; the 95 ROM waves then replace the wave slots, exactly as read (12-bit),
+  and nothing from them is stored or shipped. Which ROM wave belongs in which of the instrument's slots is only verified for the
+  first three (sine, saw, square); the rest assumes the ROM's own order, and `SAMPLES/vsmap.txt` (`<wave slot 0-95> <ROM wave 0-94 or -1>`
+  per line) overrides it.
   The release ships the stand-ins that are plain signals as WAVs in `SAMPLES` (the ten noises, the sine and the 96 waves; the
   `standins/` folder, made by `tools/render_samples.c`) so you can open, edit or overwrite them. The plugin sounds the same without them.
 
 ## Using it
 
-Six tabs: **SOUND** (sound and bank, the voice settings, a panel row of the most used controls, kit mode), **OSC** (oscillators
+Eight tabs: **SOUND** (sound and bank, the voice settings, a panel row of the most used controls), **KIT** (kit mode, choke and voice assign), **BANKS** (a list of
+banks and a paged list of the sounds in the browsed bank: tap a bank to look at it, which loads nothing, tap a sound to load it;
+the Q-Links are bank, sound, page back and page on, and the data wheel steps whichever is selected), **OSC** (oscillators
 1-4), **FILTER** (low pass and its envelope, high pass, feedback, amp, a drawing of the voice's signal path), **ENV** (amp, pitch,
 aux 1, aux 2 envelopes), **LFO**, **MODS** (eight paths). A note at the root note (C3 by default) plays the sound at its own pitch.
+
+**Choke and Voice Assign** (KIT tab, as the instrument's Misc screen): each pad can choke two other sounds of its beat (a closed hat cutting
+the open one); they are read from a project dump's beats and editable per sound; Voice Assign pins a sound to one of the voices (set by hand).
 
 **Kit mode** plays 16 sounds from one instance, as the instrument's pads play a beat's sounds: the 16 notes from Kit Notes (C1 =
 MPC's first pad by default) play the bank's sounds of the Kit Page (1-16, 17-32, ...), each at its own pitch, sharing the voices.

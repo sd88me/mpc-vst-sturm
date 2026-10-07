@@ -94,6 +94,21 @@ EXTRA = [
     {"key": "kit", "name": "Kit Mode", "options": ["Off", "On", "On + Select"], "default": 0},
     {"key": "kit_base", "name": "Kit Notes", "min": 0, "max": 112, "default": 36, "display": "int", "dynamic_display": True},
     {"key": "kit_page", "name": "Kit Page", "min": 0, "max": 7, "default": 0, "display": "int", "dynamic_display": True},
+    # the BANKS page (append only), browse a bank without loading it, tap a sound to load it
+    {"key": "browse_bank", "name": "Browse Bank", "min": 0, "max": 63, "default": 0, "display": "int", "dynamic_display": True},
+    {"key": "patch_page", "name": "Sound Page", "min": 0, "max": 3, "default": 0, "display": "int", "dynamic_display": True},
+    {"key": "bank_range", "name": "Bank Range", "min": 0, "max": 1, "default": 0, "display": "string"},
+] + [{"key": "%s_%s" % (k, d), "name": "%s %s" % ("Browse" if k == "browse_bank" else "Page", "<" if d == "prev" else ">"), "min": 0, "max": 1,
+      "default": 0, "momentary": True, "type": "trigger", "step_of": k, "step_delta": -1 if d == "prev" else 1}
+     for k in ("browse_bank", "patch_page") for d in ("prev", "next")] + [
+    {"key": "bank_slot_%d" % (i + 1), "name": "Bank %d" % (i + 1), "min": 0, "max": 1, "default": 0, "display": "string"} for i in range(22)
+] + [
+    {"key": "patch_slot_%d" % (i + 1), "name": "Sound %d" % (i + 1), "min": 0, "max": 1, "default": 0, "display": "string"} for i in range(32)
+] + [
+    # the instrument's beat settings of the edited sound (append only): the two sounds of its beat it chokes (1-32, 0 none) and Voice Assign
+    {"key": "choke1", "name": "Choke 1", "min": 0, "max": 32, "default": 0, "display": "int", "dynamic_display": True},
+    {"key": "choke2", "name": "Choke 2", "min": 0, "max": 32, "default": 0, "display": "int", "dynamic_display": True},
+    {"key": "voice_assign", "name": "Voice Assign", "min": 0, "max": 6, "default": 0, "display": "int", "dynamic_display": True},
 ]
 
 def params_json():
@@ -107,6 +122,8 @@ def params_json():
             e.update({"min": 0, "max": mx, "default": d, "display": "int"})
             if fmt != "int":
                 e["dynamic_display"] = True
+            if key.endswith("_freq") and key.startswith("osc"):
+                e["nudge_pct"] = 10     # a data wheel click is 1/100 of the 0-120 range: one semitone, not two
         out.append(e)
     out += EXTRA
     return {"name": "Sturm", "params": out}

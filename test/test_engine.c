@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 /* Engine checks: every built-in sound plays, pitch is right, envelope timing follows the firmware's curves, the sound format
  * round-trips, state restores; with a folder argument, every sound in its .syx files decodes, loads and plays.
  *   gcc -O1 -g -fsanitize=address,undefined -Isrc -I../mpc-vst-plugins/wrapper -o /tmp/tp_test test/test_engine.c  src/[a-z]*.c -lm
@@ -6,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "engine.h"
 #include "patch_tab.h"
 #include "presets.h"
@@ -165,7 +167,56 @@ int main(int argc, char **argv) {
         CHECK(nl == 107 && diff == 0 && wd < 0.02f, "shipped stand-in WAVs: %d slots loaded (want 107), %d differ, wave diff %.4f", nl, diff, wd);
     }
     samples_close(fl);
+    /* a Prophet VS program ROM image (built here: a rising table, then 95 waves of 192 bytes) fills the wave slots; vsmap.txt re-maps one */
+    {
+        char dir[] = "/tmp/tp_vsrom_XXXXXX";
+        if (mkdtemp(dir)) {
+            static uint8_t img[65536];
+            uint8_t *st = img + 32768;
+            for (int k = 0; k < 7264; k++) { int w = k == 7263 ? 0xFFFF : 0x028C + (int)((0xFFFF - 0x028C) * (long)k / 7263); st[2 * k] = (uint8_t)(w >> 8); st[2 * k + 1] = (uint8_t)w; }
+            for (int j = 0; j < 95; j++)
+                for (int k = 0; k < 128; k++) {
+                    int v = (int)lrintf(2000.0f * sinf(6.2831853f * (float)(j + 1) * (float)k / 128)), hb = v >> 4, nib = v & 15;
+                    st[14528 + 192 * j + k] = (uint8_t)hb;
+                    st[14528 + 192 * j + 128 + k / 2] |= (uint8_t)((k & 1) ? nib : nib << 4);
+                }
+            char path[256];
+            snprintf(path, sizeof path, "%s/vs.bin", dir);
+            FILE *f = fopen(path, "wb");
+            fwrite(img, 1, sizeof img, f);
+            fclose(f);
+            snprintf(path, sizeof path, "%s/vsmap.txt", dir);
+            f = fopen(path, "w");
+            fprintf(f, "# wave slot, rom wave\n5 0\n");
+            fclose(f);
+            tp_samples_t *vs = samples_open();
+            int n = samples_load_dir(vs, dir);
+            /* slot 3 is ROM wave 3 = four cycles of sine; slot 5 was mapped to ROM wave 0 = one cycle */
+            const float *w3 = samples_wave(vs, TP_FIRST_WAVE + 3, 0), *w5 = samples_wave(vs, TP_FIRST_WAVE + 5, 0);
+            int c3 = 0, c5 = 0;
+            for (int i = 0; w3 && w5 && i < TP_WLEN; i++) { int q = (i + TP_WLEN - 1) % TP_WLEN; c3 += w3[q] < 0 && w3[i] >= 0; c5 += w5[q] < 0 && w5[i] >= 0; }
+            CHECK(n == 95 && w3 && w5 && c3 == 4 && c5 == 1 && !samples_get(vs, TP_FIRST_WAVE + 95)->user, "VS ROM image: %d slots loaded, slot 3 has %d cycles (4), mapped slot 5 has %d (1)", n, c3, c5);
+            samples_close(vs);
+            snprintf(path, sizeof path, "%s/vs.bin", dir); remove(path);
+            snprintf(path, sizeof path, "%s/vsmap.txt", dir); remove(path);
+            rmdir(dir);
+        }
+    }
     samples_close(sm);
+    /* the BANKS page on the built-in bank: tiles show the sounds, a tap loads one, the page follows */
+    {
+        char t[64];
+        setp(h, "program", 0);
+        E->get_param(h, "patch_slot_1", t, sizeof t);
+        CHECK(!strncmp(t, "001 ", 4) && getp(h, "patch_slot_1_on") == 1, "BANKS: first tile reads '%s' and is the loaded sound", t);
+        setp(h, "patch_slot_4", 1);
+        E->get_param(h, "patch_slot_4", t, sizeof t);
+        CHECK(getp(h, "program") == 3 && getp(h, "patch_slot_4_on") == 1 && getp(h, "patch_slot_1_on") == 0, "BANKS: a tap on tile 4 loads sound 4 (program %d)", getp(h, "program"));
+        E->get_param(h, "patch_slot_30", t, sizeof t);
+        CHECK(t[0] == 0, "BANKS: a tile past the last sound is empty ('%s')", t);
+        E->get_param(h, "bank_slot_1", t, sizeof t);
+        CHECK(!strncmp(t, "1 Sturm", 7) && getp(h, "bank_slot_1_on") == 1, "BANKS: bank tile 1 reads '%s' and is browsed", t);
+    }
     E->destroy(h);
 
     /* a folder of the instrument's sound / project dumps: all decode in range, all load and play */
@@ -176,7 +227,7 @@ int main(int argc, char **argv) {
         char st[256];
         E->get_param(h, "status", st, sizeof st);
         printf("     %s\n", st);
-        int banks = 0;
+        int banks = 0, silent_total = 0;
         for (int bi = 1; bi < 64; bi++) {
             setp(h, "bank", bi);
             if (getp(h, "bank") != bi) break;
@@ -195,12 +246,44 @@ int main(int argc, char **argv) {
                 for (int k = 0; k < 8; k++) render(h, 100, &pk, NULL);  /* let long tails die before the next one */
                 midi3(h, 0xB0, 123, 0);
                 played++;
-                if (r < 0.0005) silent++;
+                if (r < 0.0005) {       /* free-running LFOs and Random sources make a note's loudness depend on the voice it lands on: judge on fresh instances, 8 notes */
+                    void *g = E->create(argv[1]);
+                    setp(g, "bank", bi);
+                    setp(g, "program", p);
+                    double best = 0;
+                    for (int k = 0; k < 8 && best < 0.0005; k++) {
+                        midi3(g, 0x90, 60, 110);
+                        double q = render(g, 200, &pk, NULL);
+                        if (q > best) best = q;
+                        midi3(g, 0x80, 60, 0);
+                        render(g, 300, &pk, NULL);
+                    }
+                    E->destroy(g);
+                    if (best < 0.0005) { silent++; silent_total++; printf("     silent: %s\n", pn); }
+                }
                 if (wavdir) { char path[2200]; snprintf(path, sizeof path, "%s/%s_%03d_%s.wav", wavdir, b, p + 1, pn); for (char *c = path + strlen(wavdir) + 1; *c; c++) if (*c == '/' || *c == ' ') *c = '_'; wav_write(path, buf, 350 * 128); }
             }
             printf("     bank %d \"%s\": %d sounds, %d silent at C3\n", bi, b, played, silent);
         }
         CHECK(banks > 0, "%d banks from %s", banks, argv[1]);
+        CHECK(silent_total <= 2, "factory sounds silent at C3 over 8 notes: %d (known: modulation-dependent ones, docs/STATUS.md)", silent_total);
+        if (banks > 2) {      /* browsing a bank loads nothing; a tapped sound loads its bank */
+            char t[64], tb[64];
+            setp(h, "bank", 0);
+            setp(h, "program", 2);
+            setp(h, "browse_bank", 2);
+            E->get_param(h, "patch_slot_1", t, sizeof t);
+            CHECK(getp(h, "bank") == 0 && getp(h, "program") == 2 && getp(h, "browse_bank") == 2 && t[0], "BANKS: browsing bank 3 leaves bank %d sound %d loaded; tile 1 '%s'",
+                  getp(h, "bank"), getp(h, "program"), t);
+            setp(h, "patch_page", 1);
+            E->get_param(h, "patch_slot_1", tb, sizeof tb);
+            CHECK(!strncmp(tb, "033 ", 4) || tb[0] == 0, "BANKS: page 2 starts at sound 33 ('%s')", tb);
+            setp(h, "patch_page", 0);
+            setp(h, "patch_slot_2", 1);
+            CHECK(getp(h, "bank") == 2 && getp(h, "program") == 1 && getp(h, "browse_bank") == 2, "BANKS: tapping tile 2 loads bank %d sound %d", getp(h, "bank"), getp(h, "program"));
+            E->get_param(h, "bank_range", t, sizeof t);
+            CHECK(!strncmp(t, "Banks 1-", 8), "BANKS: range '%s'", t);
+        }
         E->destroy(h);
     }
     /* kit mode: with a project bank, 16 notes play 16 different sounds; pad edits survive the state */
@@ -215,6 +298,29 @@ int main(int argc, char **argv) {
         midi3(h, 0x90, 60, 110); r[2] = render(h, 60, &pk, NULL); midi3(h, 0x80, 60, 0); render(h, 300, &pk, NULL);
         CHECK(r[0] > 0.003 && r[1] > 0.003 && memcmp(a, c, sizeof a), "kit: pads 1 and 2 play different sounds (rms %.3f, %.3f)", r[0], r[1]);
         CHECK(r[2] < 1e-4, "kit: a note outside the 16 pads is silent (rms %.5f)", r[2]);
+        int nch = 0, closed_ok = 0;     /* a project's beats carry Choke targets: a hat that chokes the open hat */
+        for (int bi = 1; bi <= 4; bi++) {
+            setp(h, "bank", bi);
+            if (getp(h, "bank") != bi) break;
+            for (int p = 0; p < 128; p++) {
+                setp(h, "program", p);
+                int c1 = getp(h, "choke1"), c2 = getp(h, "choke2");
+                nch += (c1 > 0) + (c2 > 0);
+                for (int c = 0; c < 2; c++) {
+                    int t = c ? c2 : c1;
+                    char pn[64], tn[64];
+                    E->get_param(h, "patch_name", pn, sizeof pn);
+                    int cur = p / 32 * 32 + t - 1;
+                    if (t > 0 && cur < 128 && (strcasestr(pn, "hat") || strcasestr(pn, "hh")) && (strcasestr(pn, "cl") || strcasestr(pn, "~"))) {
+                        setp(h, "program", cur);
+                        E->get_param(h, "patch_name", tn, sizeof tn);
+                        setp(h, "program", p);
+                        if (strcasestr(tn, "op")) closed_ok++;
+                    }
+                }
+            }
+        }
+        CHECK(nch > 0 && closed_ok > 0, "choke targets read from the project: %d set, %d closed hats choke an open hat", nch, closed_ok);
         setp(h, "program", 2);
         setp(h, "lpf_freq", 33);
         setp(h, "program", 5);
@@ -227,6 +333,36 @@ int main(int argc, char **argv) {
         setp(h, "program", 2);
         CHECK(kit == 1 && pan == 20 && getp(h, "lpf_freq") == 33, "kit state restores (kit %d, pan %d, pad 3 lpf %d; %d bytes)", kit, pan,
               getp(h, "lpf_freq"), (int)strlen(b));
+        E->destroy(h);
+    }
+    /* choke: a sound that chokes another cuts its sounding voice (a kit on the built-in bank; set here, no project needed) */
+    {
+        h = E->create(NULL);
+        setp(h, "kit", 1);
+        setp(h, "program", 1);                      /* pad 2: a sustained tone */
+        setp(h, "osc1_shape", 1); setp(h, "osc2_shape", 0); setp(h, "vca_level", 100); setp(h, "aenv_amt", 0); setp(h, "lpf_freq", 100); setp(h, "env_gate", 1);
+        setp(h, "osc3_level", 0); setp(h, "osc4_level", 0); setp(h, "sub_osc", 0);
+        setp(h, "program", 0);                      /* pad 1: silent, chokes pad 2 */
+        setp(h, "osc1_shape", 0); setp(h, "osc2_shape", 0); setp(h, "vca_level", 0); setp(h, "aenv_amt", 0);
+        double r[3];
+        midi3(h, 0x90, 37, 100); render(h, 40, &pk, NULL);
+        r[0] = render(h, 20, &pk, NULL);            /* pad 2 sounding alone */
+        midi3(h, 0x90, 36, 100);
+        render(h, 20, &pk, NULL);
+        r[1] = render(h, 20, &pk, NULL);            /* pad 1 struck, no choke set: pad 2 goes on */
+        setp(h, "choke1", 2);
+        CHECK(getp(h, "choke1") == 2 && getp(h, "choke2") == 0, "choke: Choke 1 of pad 1 reads %d", getp(h, "choke1"));
+        midi3(h, 0x90, 36, 100);
+        render(h, 20, &pk, NULL);
+        r[2] = render(h, 20, &pk, NULL);            /* now pad 1 chokes pad 2 */
+        CHECK(r[0] > 0.02 && r[1] > 0.02 && r[2] < r[0] * 0.02, "choke: pad 2 sounds (%.3f, %.3f) and is cut by pad 1's Choke 1 (%.5f)", r[0], r[1], r[2]);
+        setp(h, "voice_assign", 3);
+        char st[8192];
+        E->get_param(h, "state", st, sizeof st);
+        void *h2 = E->create(NULL);
+        E->set_param(h2, "state", st);
+        CHECK(getp(h2, "choke1") == 2 && getp(h2, "voice_assign") == 3, "choke: Choke 1 and Voice Assign survive the saved state (%d, %d; %d bytes)", getp(h2, "choke1"), getp(h2, "voice_assign"), (int)strlen(st));
+        E->destroy(h2);
         E->destroy(h);
     }
     printf(fails ? "%d FAILED\n" : "all passed\n", fails);

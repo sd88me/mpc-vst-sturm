@@ -77,7 +77,22 @@ of its own steps. The engine uses that rule for every destination.
 the manual's figures (p. 37) show a positive amount making the decay longer. The engine follows the manual; worth checking on
 an instrument.
 
-## 5. What it would take to go further
+## 5. A project's beats: Choke and the pad settings (2026-10-07, from the factory 1.4 projects)
+
+The descriptor table's records 50-58 are a sound's settings *within a beat* (Mute, Solo, Delay On/Off, Volume, Pan, Amount, Voice Assign,
+Choke 1, Choke 2), not part of the 128-byte sound record. In a project dump (`F0 01 28 61`), each beat is: a header, **32 records of 30
+bytes**, the beat's sequence events (10 bytes each), then its 32 sound records (128 bytes, contiguous). A record is `FF FF 00 00 00 00`,
+then byte 6 = Volume (default 120), 7 = Pan (64), 8 = Amount, 9 = flags (0, 64, 128 and others, unread), 12 and 13 = the two Choke
+targets (a sound 1-32 of the same beat, 0 none), 14-29 constants and per-sound values not read. Checked on the 204 beats of the 16 factory
+projects: Bag Hat~Closed chokes Bag Hat Open, BN Hat chokes BN Open Hat, a closed hat and its open hat choke each other (Chip OpenHat 29 <->
+ChipHat 21), the 808 toms chain (HTM -> MTM, LTM), and some sounds choke themselves (a monophonic retrigger). Which of bytes 12 and 13 is
+"Choke 1" is by descriptor order (12 first); both act alike. Voice Assign (0-6) was not found: no byte of the record has that range
+except 14-17 (constants 1-7), so it is not imported; the engine takes it as a setting only.
+
+Behaviour as the manual (p. 42) describes it: playing a sound cuts the sounding voices of the sounds it chokes; Voice Assign pins a sound to one
+voice (stealing it, several sounds may share one). The engine: a choked voice releases and fades out in about 6 ms (`choke_pads`).
+
+## 6. What it would take to go further
 
 - **The sample bank.** The single biggest gap: with a dump of the SAM sample bank update (or recordings of the samples), the
   engine would play the real samples (`SAMPLES/` already takes WAVs by number or name).

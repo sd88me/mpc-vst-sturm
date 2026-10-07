@@ -20,3 +20,6 @@ int tsnd_unpack(const uint8_t *in, int n, uint8_t *out, int max);               
 /* Calls fn for every sound found in a buffer of SysEx (sound dumps and project dumps). Returns the number of sounds. */
 typedef void (*tsnd_fn)(void *ctx, const uint8_t fields[NFIELD], const char *name);
 int tsnd_scan(const uint8_t *buf, size_t len, tsnd_fn fn, void *ctx);
+/* The same with each sound's two Choke targets from its beat (0 = none; always 0 for a single sound dump). */
+typedef void (*tsnd_fn_ex)(void *ctx, const uint8_t fields[NFIELD], const char *name, const uint8_t choke[2]);
+int tsnd_scan_ex(const uint8_t *buf, size_t len, tsnd_fn_ex fn, void *ctx);

@@ -7,15 +7,17 @@
 #c:has(#g > rect:first-child[width="1280"]) {
   background-color: var(--bg);
   background-image:
-    /* walnut cheeks, left and right */
-    linear-gradient(90deg, #5a3218 0px, #8a5530 3px, #6e4122 7px, rgba(0,0,0,0) 8px, rgba(0,0,0,0) 1272px, #6e4122 1273px, #8a5530 1277px, #5a3218 1280px),
-    repeating-linear-gradient(0deg, rgba(40, 20, 8, 0.35) 0 2px, rgba(0, 0, 0, 0) 2px 7px),
+    /* walnut cheeks, left and right: 14 px of grain with a lit edge, a dark seam against the plate and a soft shadow onto it */
+    linear-gradient(90deg, #4a2812 0px, #96602f 2px, #b8814a 5px, #8a5528 10px, #6a3c1c 13px, #1a0e06 14px, rgba(0,0,0,0.35) 15px, rgba(0,0,0,0) 19px, rgba(0,0,0,0) 1261px, rgba(0,0,0,0.35) 1265px, #1a0e06 1266px, #6a3c1c 1267px, #8a5528 1270px, #b8814a 1275px, #96602f 1278px, #4a2812 1280px),
+    repeating-linear-gradient(0deg, rgba(30, 14, 5, 0.45) 0 2px, rgba(0, 0, 0, 0) 2px 5px, rgba(255, 190, 120, 0.12) 5px 6px, rgba(0, 0, 0, 0) 6px 11px),
+    repeating-linear-gradient(0deg, rgba(30, 14, 5, 0.45) 0 2px, rgba(0, 0, 0, 0) 2px 5px, rgba(255, 190, 120, 0.12) 5px 6px, rgba(0, 0, 0, 0) 6px 11px),
     /* the plate: a soft top light over a brushed charcoal */
     radial-gradient(ellipse 90% 70% at 40% 0%, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 70%),
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.012) 0 1px, rgba(0, 0, 0, 0.02) 1px 3px),
     linear-gradient(175deg, #303337 0%, #2a2c30 60%, #25272a 100%);
-  background-size: 100% 100%, 8px 100%, 100% 100%, 100% 100%, 100% 100%;
-  background-repeat: no-repeat, repeat-y, no-repeat, repeat, no-repeat;
+  background-size: 100% 100%, 14px 100%, 14px 100%, 100% 100%, 100% 100%, 100% 100%;
+  background-position: 0 0, 0 0, 100% 0, 0 0, 0 0, 0 0;
+  background-repeat: no-repeat, repeat-y, repeat-y, no-repeat, repeat, no-repeat;
 }
 .frame-border { fill: rgba(0, 0, 0, 0.08); stroke: var(--line); stroke-width: 1.2; rx: 4px; }
 .frame-rule { display: none; }

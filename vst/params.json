@@ -8,7 +8,8 @@
    "max": 120,
    "default": 36,
    "display": "int",
-   "dynamic_display": true
+   "dynamic_display": true,
+   "nudge_pct": 10
   },
   {
    "key": "osc1_fine",
@@ -61,7 +62,8 @@
    "max": 120,
    "default": 36,
    "display": "int",
-   "dynamic_display": true
+   "dynamic_display": true,
+   "nudge_pct": 10
   },
   {
    "key": "osc2_fine",
@@ -114,7 +116,8 @@
    "max": 120,
    "default": 64,
    "display": "int",
-   "dynamic_display": true
+   "dynamic_display": true,
+   "nudge_pct": 10
   },
   {
    "key": "osc3_fine",
@@ -165,7 +168,8 @@
    "max": 120,
    "default": 64,
    "display": "int",
-   "dynamic_display": true
+   "dynamic_display": true,
+   "nudge_pct": 10
   },
   {
    "key": "osc4_fine",
@@ -1263,6 +1267,535 @@
    "name": "Kit Page",
    "min": 0,
    "max": 7,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "browse_bank",
+   "name": "Browse Bank",
+   "min": 0,
+   "max": 63,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "patch_page",
+   "name": "Sound Page",
+   "min": 0,
+   "max": 3,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "bank_range",
+   "name": "Bank Range",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "browse_bank_prev",
+   "name": "Browse <",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "momentary": true,
+   "type": "trigger",
+   "step_of": "browse_bank",
+   "step_delta": -1
+  },
+  {
+   "key": "browse_bank_next",
+   "name": "Browse >",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "momentary": true,
+   "type": "trigger",
+   "step_of": "browse_bank",
+   "step_delta": 1
+  },
+  {
+   "key": "patch_page_prev",
+   "name": "Page <",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "momentary": true,
+   "type": "trigger",
+   "step_of": "patch_page",
+   "step_delta": -1
+  },
+  {
+   "key": "patch_page_next",
+   "name": "Page >",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "momentary": true,
+   "type": "trigger",
+   "step_of": "patch_page",
+   "step_delta": 1
+  },
+  {
+   "key": "bank_slot_1",
+   "name": "Bank 1",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_2",
+   "name": "Bank 2",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_3",
+   "name": "Bank 3",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_4",
+   "name": "Bank 4",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_5",
+   "name": "Bank 5",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_6",
+   "name": "Bank 6",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_7",
+   "name": "Bank 7",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_8",
+   "name": "Bank 8",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_9",
+   "name": "Bank 9",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_10",
+   "name": "Bank 10",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_11",
+   "name": "Bank 11",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_12",
+   "name": "Bank 12",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_13",
+   "name": "Bank 13",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_14",
+   "name": "Bank 14",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_15",
+   "name": "Bank 15",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_16",
+   "name": "Bank 16",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_17",
+   "name": "Bank 17",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_18",
+   "name": "Bank 18",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_19",
+   "name": "Bank 19",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_20",
+   "name": "Bank 20",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_21",
+   "name": "Bank 21",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "bank_slot_22",
+   "name": "Bank 22",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_1",
+   "name": "Sound 1",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_2",
+   "name": "Sound 2",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_3",
+   "name": "Sound 3",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_4",
+   "name": "Sound 4",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_5",
+   "name": "Sound 5",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_6",
+   "name": "Sound 6",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_7",
+   "name": "Sound 7",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_8",
+   "name": "Sound 8",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_9",
+   "name": "Sound 9",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_10",
+   "name": "Sound 10",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_11",
+   "name": "Sound 11",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_12",
+   "name": "Sound 12",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_13",
+   "name": "Sound 13",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_14",
+   "name": "Sound 14",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_15",
+   "name": "Sound 15",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_16",
+   "name": "Sound 16",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_17",
+   "name": "Sound 17",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_18",
+   "name": "Sound 18",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_19",
+   "name": "Sound 19",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_20",
+   "name": "Sound 20",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_21",
+   "name": "Sound 21",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_22",
+   "name": "Sound 22",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_23",
+   "name": "Sound 23",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_24",
+   "name": "Sound 24",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_25",
+   "name": "Sound 25",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_26",
+   "name": "Sound 26",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_27",
+   "name": "Sound 27",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_28",
+   "name": "Sound 28",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_29",
+   "name": "Sound 29",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_30",
+   "name": "Sound 30",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_31",
+   "name": "Sound 31",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "patch_slot_32",
+   "name": "Sound 32",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "display": "string"
+  },
+  {
+   "key": "choke1",
+   "name": "Choke 1",
+   "min": 0,
+   "max": 32,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "choke2",
+   "name": "Choke 2",
+   "min": 0,
+   "max": 32,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "voice_assign",
+   "name": "Voice Assign",
+   "min": 0,
+   "max": 6,
    "default": 0,
    "display": "int",
    "dynamic_display": true

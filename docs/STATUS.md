@@ -12,7 +12,7 @@
   pressure, sliders (CC 16-19).
 - Banks: every `.syx` in the plugin folder or `SYSEX/` (sound dumps and project dumps; 128 sounds per bank). All 416 factory
   sounds (1.4) decode and load; 411 make sound at C3.
-- Plugin: 152 parameters, a six-tab skin in the browser renderer (`"art": "html"`; cues from the instrument's panel: charcoal plate,
+- Plugin: 214 parameters, an eight-tab skin (BANKS: bank and sound lists with Q-Link and data wheel control) in the browser renderer (`"art": "html"`; cues from the instrument's panel: charcoal plate,
   walnut cheeks, black knurled knobs with metal caps, blue LEDs and LCD; a signal-path drawing on FILTER), state chunk "TP2" (sound,
   host settings and the kit page's 16 sounds; "TP1" still loads).
 - Kit mode (2026-10-06): 16 notes play 16 sounds of the bank (a project's beat), each at its own pitch, sharing the voices; edits
@@ -21,6 +21,10 @@
   slot, the factory folder). `tools/test_port.sh` passes every check but one (below). armhf build OK (glibc 2.27).
 
 ## Known limits
+- **VS wave ROM (2026-10-07, offline):** `src/vsrom.c` reads the user's own VS program ROM chips (decoded in the Morpho-PE repo, its
+  docs/FIRMWARE.md section 14) into the 96 wave slots. The slot map is a guess (ROM order, `vsmap.txt` overrides): only Sine, Sawtooth
+  and Square (slots 0-2) are checked against the ROM; the manual lists names and no wave definitions, and the main OS holds no sample
+  table (no address list in the image). A hardware wave dump or a recording of slots 3+ would settle it. Tested with a synthetic image only.
 - **No real samples.** The instrument's sample bank is not in any public file; oscillators 3/4 play stand-ins of our own unless
   you put WAVs in `SAMPLES/`. The plain-signal stand-ins (ten noises, the sine, the 96 waves) also ship as WAVs (`standins/`,
   `tools/render_samples.c`, checked by the test); the drum and percussion ones are generated in code only. How much depends on
@@ -32,8 +36,14 @@
   versions and is not mapped yet; `aenv_r` is 127 against a maximum of 123 in 3.
 - Analog parts are modelled from their circuits, not measured (docs/ANALOG.md): cutoff scale, high-pass law, feedback gain,
   resonance range.
-- Silent at C3: Dat Kick, Alien Loop and three others: they depend on modulation of pulse widths at 0/99 or on loop gains not
-  yet matched.
+- Silent at C3 (2026-10-07, 416 factory sounds, 8 notes on a fresh instance each): one, Alien Loop (both oscillators are flat pulses
+  and the filter's own ring sits at 9 Hz; it plays only with pad pressure). Several more are quiet or silent on some notes because their
+  loudness depends on free-running LFOs, Random or velocity (Bit Snare, Sizzle Tubes, Rezzy Beacon, Pad~Funk'Up, ReEntry Delayed,
+  8bit Console): that is by their design, not checked on a unit. Horror Toned is a filter ring at resonance 106 and is faint; whether the real
+  filter self-oscillates that low is open.
+- An envelope's modulation (Env Amt destinations) is added after its velocity amount, not before: with the other order, a negative
+  Velocity -> Amp Env Amt path (Plucked Lead, Pressure Wubs) closes the VCA at normal velocity. The order is inferred, not read from
+  the firmware; the voice CPU only sums modulation, so the main CPU probably applies velocity first.
 - Envelope time modulation follows the manual's direction; the firmware's arithmetic suggests the opposite (docs/FIRMWARE.md).
 - `test_port.sh`: "six data wheel clicks step six" fails on Osc1 Freq (0-120): the wrapper rounds a 1.2-step click to 2 (the
   same wrapper limit Morpho-PE records).
@@ -43,5 +53,5 @@
 ## Next steps
 1. Device: install, bench (mpc-vst-plugins docs/BENCH.md), play, save/reload a project.
 2. Listen against the hardware (or recordings) and fit the analog guesses.
-3. Kit mode on a device: MPC's pad notes, choke groups (the instrument's Choke 1/2 are beat settings, not in the sound), per-pad pan.
+3. Kit mode on a device: MPC's pad notes, per-pad pan. Choke 1/2 are done (read from a project's beats, section 5 of docs/FIRMWARE.md); Voice Assign is by hand only (its byte in the beat was not found).
 4. README screenshots, catalog entry (`release.py --repo sd88me/mpc-vst-sturm --license MIT --id sturm --extra standins:SAMPLES`).
