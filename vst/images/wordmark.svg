@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="360" height="100" viewBox="0 0 360 100">
-  <!-- Sturm wordmark, our own: bold white capitals with a thin blue offset shadow; not the instrument's logo -->
-  <g font-family="Titillium Web, sans-serif" font-weight="700" font-size="64" letter-spacing="6">
-    <text x="24" y="70" fill="none" stroke="#2f7dff" stroke-width="2.5" stroke-linejoin="round">STURM</text>
-    <text x="21" y="67" fill="#ffffff">STURM</text>
+  <!-- Sturm wordmark, our own: wide squared capitals drawn as strokes (rounded corners, a sheared M), white with a thin blue shadow -->
+  <g fill="none" stroke-width="9" stroke-linejoin="bevel" stroke-linecap="butt">
+    <path d="M68,25 H32 Q24,25 24,33 V40 Q24,48 32,48 H60 Q68,48 68,56 V63 Q68,71 60,71 H24 M82,25 H130 M106,25 V71 M142,25 V63 Q142,71 150,71 H178 Q186,71 186,63 V25 M200,71 V25 H234 Q244,25 244,35 V38 Q244,48 234,48 H200 M226,48 L246,71 M258,71 V25 L280,54 L302,25 V71" stroke="#2f7dff" transform="translate(3,3)"/>
+    <path d="M68,25 H32 Q24,25 24,33 V40 Q24,48 32,48 H60 Q68,48 68,56 V63 Q68,71 60,71 H24 M82,25 H130 M106,25 V71 M142,25 V63 Q142,71 150,71 H178 Q186,71 186,63 V25 M200,71 V25 H234 Q244,25 244,35 V38 Q244,48 234,48 H200 M226,48 L246,71 M258,71 V25 L280,54 L302,25 V71" stroke="#ffffff"/>
   </g>
+  <rect x="24" y="84" width="238" height="3" fill="#2f7dff"/>
 </svg>

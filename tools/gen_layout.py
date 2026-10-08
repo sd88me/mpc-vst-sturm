@@ -117,7 +117,7 @@ theme_lcd=1f3f9e
 knob_look=moog
 art_css=skin.css"""
 
-M = 16                 # left and right margin: the walnut cheeks are 14 px wide (vst/skin.css)
+M = 30                 # left and right margin: the walnut cheeks are 14 px wide (vst/skin.css); 16 px of plate between
 FULL = 1280 - 2 * M
 
 def voice_diagram(x, y, w, h):
@@ -182,7 +182,7 @@ def main():
     tab("SOUND")
     emit('stepper style=dotmatrix cx=%d cy=124 w=280 h=48 label="" key=program' % (M + 140))
     emit('readout style=dotmatrix cx=%d cy=124 w=340 h=48 label="" key=patch_name' % (M + 280 + 10 + 170))
-    emit('readout style=dotmatrix cx=%d cy=124 w=570 h=48 label="" key=status' % (FULL + M - 285))
+    emit('readout style=dotmatrix cx=%d cy=124 w=570 h=48 label="" key=status' % (M + FULL - 285))
     vo, _ = section(M, 164, "VOICE", [[("VOICES", "voices"), ("VOICE MODE", "^mono_mode"), ("ROOT NOTE", "root"), ("PAN", "pan"),
                      ("VOLUME", "volume"), ("BEND RANGE", "bend_range"), ("GLIDE MODE", "^glide_mode"), ("OSC SLOP", "slop"),
                      ("AD MODE", "^env_gate")]], FULL)
@@ -200,14 +200,15 @@ def main():
 
     # ---- BANKS: pick a bank and a sound from lists; the Q-Links are bank, sound, page back, page on (the wheel steps what is selected)
     tab("BANKS")
-    emit('stepper style=dotmatrix cx=146 cy=118 w=260 h=44 label="" key=browse_bank')
-    emit('stepper style=dotmatrix cx=640 cy=118 w=560 h=44 label="" key=program')
-    emit('stepper style=dotmatrix cx=1138 cy=118 w=252 h=44 label="" key=patch_page')
-    emit('frame x=16 y=150 w=268 h=548 title="BANKS"')
-    emit('list x=28 y=190 w=244 h=462 cols=1 rows=22 gap=2 th=19 key=bank_slot order=cols')
-    emit('readout style=dotmatrix cx=150 cy=680 w=244 h=26 label="" key=bank_range')
-    emit('frame x=292 y=150 w=972 h=548 title="SOUNDS"')
-    emit('list x=304 y=200 w=948 h=464 cols=3 rows=11 gap=4 th=38 key=patch_slot order=cols')
+    R_ = M + FULL                                  # right edge of the content
+    emit('stepper style=dotmatrix cx=%d cy=122 w=260 h=44 label="" key=browse_bank' % (M + 130))
+    emit('stepper style=dotmatrix cx=640 cy=122 w=540 h=44 label="" key=program')
+    emit('stepper style=dotmatrix cx=%d cy=122 w=252 h=44 label="" key=patch_page' % (R_ - 126))
+    emit('frame x=%d y=154 w=262 h=544 title="BANKS"' % M)
+    emit('list x=%d y=194 w=238 h=462 cols=1 rows=22 gap=2 th=19 key=bank_slot order=cols' % (M + 12))
+    emit('readout style=dotmatrix cx=%d cy=680 w=238 h=26 label="" key=bank_range' % (M + 131))
+    emit('frame x=%d y=154 w=%d h=544 title="SOUNDS"' % (M + 278, FULL - 278))
+    emit('list x=%d y=204 w=%d h=464 cols=3 rows=11 gap=4 th=38 key=patch_slot order=cols' % (M + 290, FULL - 302))
     qlinks("Banks", ["browse_bank", "program", "patch_page_prev", "patch_page_next"])
 
     # ---- OSC: two analog oscillators and two sample oscillators
@@ -235,8 +236,8 @@ def main():
     hp, _ = section(M, Y(2), "HIGH PASS", [[("FREQUENCY", "hpf_freq"), ("KEY AMOUNT", "hpf_key")]], 2 * 155)
     fb, _ = section(M + 2 * 155 + 10, Y(2), "FEEDBACK", [[("LEVEL", "feedback")]], 155)
     va, _ = section(M, Y(3), "AMP", [[("VCA LEVEL", "vca_level"), ("ENV AMOUNT", "aenv_amt"), ("VELOCITY", "aenv_vel"),
-                     ("VOLUME", "volume"), ("PAN", "pan")]], 5 * 155)
-    voice_diagram(804, Y(2), 460, 300)
+                     ("VOLUME", "volume"), ("PAN", "pan")]], 5 * 150)
+    voice_diagram(790, Y(2), 460, 300)
     qlinks("Low Pass", lp + le + ["hpf_freq", "hpf_key", "feedback"])
     qlinks("HP / Amp", hp + fb + va)
 
@@ -256,14 +257,14 @@ def main():
                      ("DESTINATION", "^lfo1_dest"), ("SYNC", "~lfo1_sync"), ("RESTART", "^lfo1_restart")]], FULL)
     l2, _ = section(M, Y(1), "LFO 2", [[("RATE", "lfo2_rate"), ("SHAPE", "^lfo2_shape"), ("AMOUNT", "lfo2_amt"),
                      ("DESTINATION", "^lfo2_dest"), ("SYNC", "~lfo2_sync"), ("RESTART", "^lfo2_restart")]], FULL)
-    wordmark(900, Y(3) + 20, 360, 100)
+    wordmark(FULL + M - 360, Y(3) + 20, 360, 100)
     qlinks("LFOs", l1 + l2)
 
     tab("MODS")
     mods = []
     for n in range(8):
-        k, _ = section(M + 628 * (n // 4), Y(n % 4), "MOD %d" % (n + 1), [[("SOURCE", "^mod%d_src" % (n + 1)),
-                       ("AMOUNT", "mod%d_amt" % (n + 1)), ("DESTINATION", "^mod%d_dest" % (n + 1))]], 625)
+        k, _ = section(M + 618 * (n // 4), Y(n % 4), "MOD %d" % (n + 1), [[("SOURCE", "^mod%d_src" % (n + 1)),
+                       ("AMOUNT", "mod%d_amt" % (n + 1)), ("DESTINATION", "^mod%d_dest" % (n + 1))]], 602)
         mods += k
     qlinks("Mods 1-4", mods[:12])
     qlinks("Mods 5-8", mods[12:])
