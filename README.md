@@ -61,13 +61,14 @@ The plugin makes `SYSEX` and `SAMPLES` folders inside its own folder on first lo
 
 ## Using it
 
-Eight tabs: **SOUND** (sound and bank, the voice settings, a panel row of the most used controls), **KIT** (kit mode, choke and voice assign), **BANKS** (a list of
-banks and a paged list of the sounds in the browsed bank: tap a bank to look at it, which loads nothing, tap a sound to load it;
-the Q-Links are bank, sound, page back and page on, and the data wheel steps whichever is selected), **OSC** (oscillators
-1-4), **FILTER** (low pass and its envelope, high pass, feedback, amp, a drawing of the voice's signal path), **ENV** (amp, pitch,
-aux 1, aux 2 envelopes), **LFO**, **MODS** (eight paths). A note at the root note (C3 by default) plays the sound at its own pitch.
+Seven tabs: **SOUND** (the sound stepper and name, the status line, the voice settings, a panel row of the most used controls, and the
+kit: Kit Mode, Kit Notes, Kit Page, Choke 1/2 and Voice Assign), **BANKS** (a column of banks and three columns of the browsed bank's
+sounds: tap a bank to look at it, which loads nothing, tap a sound to load it; the Q-Links are bank, sound, page back and page on,
+and the data wheel steps whichever is selected), **OSC** (oscillators 1-4), **FILTER** (low pass and its envelope, high pass,
+feedback, amp, a drawing of the voice's signal path), **ENV** (amp, pitch, aux 1, aux 2 envelopes), **LFO**, **MODS** (eight paths).
+Destinations and mod sources are pickers: tap one and choose from a grid grouped by kind. A note at the root note (C3 by default) plays the sound at its own pitch.
 
-**Choke and Voice Assign** (KIT tab, as the instrument's Misc screen): each pad can choke two other sounds of its beat (a closed hat cutting
+**Choke and Voice Assign** (SOUND tab, as the instrument's Misc screen): each pad can choke two other sounds of its beat (a closed hat cutting
 the open one); they are read from a project dump's beats and editable per sound; Voice Assign pins a sound to one of the voices (set by hand).
 
 **Kit mode** plays 16 sounds from one instance, as the instrument's pads play a beat's sounds: the 16 notes from Kit Notes (C1 =

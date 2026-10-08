@@ -9,6 +9,8 @@ check MAIN.syx` compares them). Names follow the manual (v1.4, p. 26-40). The sa
 bank 0-4 (sample = bank x 128 + number, 464 samples); the plugin adds one combined host parameter for it.
 """
 import json
+import os
+import re
 import sys
 
 LFO_SHAPES = ["Triangle", "Rev Saw", "Sawtooth", "Square", "Random"]
@@ -109,13 +111,25 @@ EXTRA = [
     {"key": "choke1", "name": "Choke 1", "min": 0, "max": 32, "default": 0, "display": "int", "dynamic_display": True},
     {"key": "choke2", "name": "Choke 2", "min": 0, "max": 32, "default": 0, "display": "int", "dynamic_display": True},
     {"key": "voice_assign", "name": "Voice Assign", "min": 0, "max": 6, "default": 0, "display": "int", "dynamic_display": True},
+    # the 33rd tile of the sound list (3 columns of 11): always blank, so a page of 32 sounds fills the grid
+    {"key": "patch_slot_33", "name": "Sound 33", "min": 0, "max": 1, "default": 0, "display": "string"},
 ]
+
+def engine_names(var):
+    """A name table of src/engine.c (the one place the destination and source names live)."""
+    src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "engine.c")).read()
+    body = src[src.index(var):]
+    body = body[body.index("{") + 1:body.index("};")]
+    return re.findall(r'"([^"]*)"', body)
 
 def params_json():
     out = []
     for key, name, bits, mx, d, fmt in FIELDS:
         e = {"key": key, "name": name}
-        if isinstance(fmt, list):
+        if fmt in ("dest", "src"):      # pickers: an option per value (the value stays the same number)
+            e["options"] = engine_names({"dest": "DEST_NAMES", "src": "SRC_NAMES"}[fmt])[:mx + 1]
+            e["default"] = d
+        elif isinstance(fmt, list):
             e["options"] = fmt[:mx + 1]
             e["default"] = d
         else:

@@ -957,7 +957,7 @@ static void tp_set_param(void *h, const char *k, const char *val) {
     }
     else if (!strncmp(k, "patch_slot_", 11)) {      /* a tap on a sound tile: load that bank and sound */
         int idx = s->browse_page * SOUND_SLOTS + atoi(k + 11) - 1;
-        if (idx >= 0 && idx < s->bcount) {
+        if (atoi(k + 11) <= SOUND_SLOTS && idx >= 0 && idx < s->bcount) {
             if (s->browse_bank != s->cur_bank) load_bank(s, s->browse_bank);
             select_sound(s, idx);
         }
@@ -1046,7 +1046,7 @@ static int tp_get_param(void *h, const char *k, char *b, int n) {
         if (!strncmp(k, "patch_slot_", 11)) {
             int idx = s->browse_page * SOUND_SLOTS + atoi(k + 11) - 1;
             if (on) return snprintf(b, z, "%d", s->browse_bank == s->cur_bank && idx == s->cur_prog) + 1;
-            if (idx < 0 || idx >= s->bcount) { b[0] = 0; return 1; }
+            if (atoi(k + 11) > SOUND_SLOTS || idx < 0 || idx >= s->bcount) { b[0] = 0; return 1; }
             return snprintf(b, z, "%03d %s", idx + 1, s->bnames[idx]) + 1;
         }
     }
