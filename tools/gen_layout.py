@@ -200,17 +200,22 @@ def main():
 
     # ---- BANKS: pick a bank and a sound from lists; the Q-Links are bank, sound, page back, page on (the wheel steps what is selected)
     tab("BANKS")
-    R_ = M + FULL                                  # right edge of the content
-    emit('stepper style=dotmatrix cx=%d cy=122 w=330 h=44 label="" key=browse_bank' % (M + 165))
-    emit('stepper style=dotmatrix cx=%d cy=122 w=170 h=44 label="" key=bank_page' % (M + 330 + 8 + 85))
-    emit('stepper style=dotmatrix cx=%d cy=122 w=400 h=44 label="" key=program' % (M + 508 + 8 + 200))
-    emit('stepper style=dotmatrix cx=%d cy=122 w=252 h=44 label="" key=patch_page' % (R_ - 126))
-    emit('frame x=%d y=154 w=500 h=544 title="BANKS"' % M)
-    emit('list x=%d y=194 w=476 h=462 cols=2 rows=11 gap=6 th=36 key=bank_slot order=cols' % (M + 12))
-    emit('readout style=dotmatrix cx=%d cy=680 w=476 h=26 label="" key=bank_range' % (M + 250))
-    emit('frame x=%d y=154 w=%d h=544 title="SOUNDS"' % (M + 516, FULL - 516))
-    emit('list x=%d y=194 w=%d h=468 cols=2 rows=16 gap=3 th=26 key=patch_slot order=cols' % (M + 528, FULL - 540))
-    qlinks("Banks", ["browse_bank", "bank_page", "program", "patch_page", "bank_page_prev", "bank_page_next", "patch_page_prev", "patch_page_next"])
+    # two panels, each with its picker and name on top, its table, and its page control under the table; the sample selector sits
+    # under the sound table beside the sound page control. Everything in a panel is as wide as, and lined up with, its table.
+    BW = 500                                       # the banks panel; the sounds panel takes the rest
+    SX = M + BW + 16
+    SW = FULL - BW - 16
+    emit('frame x=%d y=96 w=%d h=604 title="BANKS"' % (M, BW))
+    emit('stepper style=dotmatrix cx=%d cy=150 w=%d h=44 label="" key=browse_bank' % (M + BW // 2, BW - 24))
+    emit('list x=%d y=180 w=%d h=456 cols=2 rows=11 gap=6 th=36 key=bank_slot order=cols' % (M + 12, BW - 24))
+    emit('stepper style=dotmatrix cx=%d cy=670 w=%d h=42 label="" key=bank_page' % (M + BW // 2, BW - 24))
+    emit('frame x=%d y=96 w=%d h=604 title="SOUNDS"' % (SX, SW))
+    emit('stepper style=dotmatrix cx=%d cy=150 w=%d h=44 label="" key=program' % (SX + SW // 2, SW - 24))
+    emit('list x=%d y=180 w=%d h=462 cols=2 rows=16 gap=2 th=27 key=patch_slot order=cols' % (SX + 12, SW - 24))
+    half = (SW - 24 - 8) // 2
+    emit('stepper style=dotmatrix cx=%d cy=670 w=%d h=42 label="" key=patch_page' % (SX + 12 + half // 2, half))
+    emit('popup cx=%d cy=670 w=%d h=42 label="" key=sample_filter' % (SX + 12 + half + 8 + half // 2, half))
+    qlinks("Banks", ["browse_bank", "bank_page", "program", "patch_page", "bank_page_prev", "bank_page_next", "patch_page_prev", "patch_page_next", "sample_filter"])
 
     # ---- OSC: two analog oscillators and two sample oscillators
     tab("OSC")

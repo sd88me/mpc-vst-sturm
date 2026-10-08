@@ -101,6 +101,7 @@ typedef struct {
     tp_samples_t *smp;
     bankref_t banks[MAXBANKS];
     int nbanks, cur_bank, cur_prog;
+    int skip, dedupe;                           /* Sample Sounds: 0 all, 1 no drum samples, 2 no samples; leave out repeats (SYSEX/import.txt) */
     int bank_page;                              /* BANKS page: which 22 banks the bank list shows (follows the browsed bank unless stepped) */
     int browse_bank, browse_page, bcount;       /* BANKS page: the bank being looked at (loads nothing), its page, its sound count */
     char bnames[128][TSND_NAME];
@@ -190,8 +191,7 @@ static void cache_cb(void *c, const uint8_t f[NFIELD], const char *name, const u
     if (k + 1 > bc->n) bc->n = k + 1;
 }
 /* SYSEX/import.txt: what to leave out of sound dumps (project dumps are never filtered: their beats are the kit layout)
- *   skip_samples = off | drums | all   leave out sounds that play a PCM sample (we have no sample set): "drums" keeps the sounds that
- *                                      only use the noises (those have stand-ins), "all" drops any PCM sample (default off)
+ * (Which sounds play PCM samples is the Sample Sounds parameter's: 0 all, 1 no drum samples (noise-only ones kept), 2 no samples.)
  *   dedupe = on | off                  leave out a sound identical in all 127 fields to one already loaded from an earlier file (default on) */
 typedef struct { int skip, dedupe, n, cap; uint8_t (*seen)[NFIELD]; } import_t;
 static void import_cfg(import_t *im, const char *dir) {
@@ -201,8 +201,7 @@ static void import_cfg(import_t *im, const char *dir) {
     while (f && fgets(line, sizeof line, f)) {
         char k[40] = "", v[40] = "";
         if (line[0] == '#' || sscanf(line, " %39[a-z_] = %39s", k, v) != 2) continue;
-        if (!strcmp(k, "skip_samples")) im->skip = !strcmp(v, "all") ? 2 : !strcmp(v, "drums") ? 1 : 0;
-        else if (!strcmp(k, "dedupe")) im->dedupe = strcmp(v, "off") != 0;
+        if (!strcmp(k, "dedupe")) im->dedupe = strcmp(v, "off") != 0;
     }
     if (f) fclose(f);
 }
@@ -225,7 +224,6 @@ static void collect_cb(void *c, const uint8_t f[NFIELD], const char *name, const
 static int cmpstr(const void *a, const void *b) { return strcasecmp(*(char *const *)a, *(char *const *)b); }
 /* Every .syx with sounds becomes a bank (128 sounds each; a project of 512 sounds becomes four). */
 static void scan_dir(tp_t *s, const char *dir, import_t *im) {
-    import_cfg(im, dir);
     DIR *d = opendir(dir);
     if (!d) return;
     char *names[512];
@@ -369,6 +367,7 @@ static void prepare_kit(tp_t *s) {          /* the 16 pads' stand-ins, before th
     if (!s->kit) return;
     for (int p = 16 * s->kit_page; p < 16 * s->kit_page + 16; p++) { samples_request(s->smp, sample_of_f(s->bankdata[p], 0)); samples_request(s->smp, sample_of_f(s->bankdata[p], 1)); }
 }
+static void rescan(tp_t *s);
 static void select_sound(tp_t *s, int p) {
     s->cur_prog = clampi(p, 0, 127);
     memcpy(s->f, s->bankdata[s->cur_prog], NFIELD);
@@ -810,16 +809,17 @@ static void *tp_create(const char *dir) {
             FILE *cf = fopen(cfg, "w");
             if (cf) {
                 fputs("# What to leave out when the sound dumps in this folder are read (project dumps are never filtered).\n"
-                      "# skip_samples: off | drums (leave out sounds that play drum/percussion samples; noises are kept) | all (any PCM sample)\n"
                       "# dedupe: on | off (leave out a sound identical to one already loaded from an earlier file)\n"
-                      "skip_samples = off\ndedupe = on\n", cf);
+                      "# (leaving out sounds that play samples is the Sample Sounds setting on the BANKS page)\n"
+                      "dedupe = on\n", cf);
                 fclose(cf);
             }
         }
         import_t im = {0, 1, 0, 0, NULL};
-        scan_dir(s, dir, &im);
-        scan_dir(s, sub, &im);
-        free(im.seen);
+        import_cfg(&im, dir);
+        import_cfg(&im, sub);
+        s->dedupe = im.dedupe;
+        rescan(s);
         snprintf(sub, sizeof sub, "%s/SAMPLES", dir);
         mkdir(sub, 0755);
         samples_load_dir(s->smp, sub);
@@ -827,6 +827,32 @@ static void *tp_create(const char *dir) {
     load_bank(s, 0);
     select_sound(s, 0);       /* also points the BANKS page at it */
     return s;
+}
+/* (Re)read every bank in the folders: sound dumps are filtered by Sample Sounds and dedupe (project dumps never). */
+static void rescan(tp_t *s) {
+    for (int i = 1; i < s->nbanks; i++) { free(s->banks[i].c); s->banks[i].c = NULL; }
+    s->nbanks = 1;
+    if (!s->dir[0]) return;
+    char sub[PATHLEN];
+    snprintf(sub, sizeof sub, "%s/SYSEX", s->dir);
+    import_t im = {s->skip, s->dedupe, 0, 0, NULL};
+    scan_dir(s, s->dir, &im);
+    scan_dir(s, sub, &im);
+    free(im.seen);
+}
+static void set_sample_filter(tp_t *s, int x) {      /* the banks are rebuilt; the same-named bank (else the built-in one) loads its first sound */
+    x = clampi(x, 0, 2);
+    if (x == s->skip) return;
+    char keep[40];
+    snprintf(keep, sizeof keep, "%s", s->banks[s->cur_bank].name);
+    all_off(s);
+    s->skip = x;
+    rescan(s);
+    int nb = 0;
+    for (int i = 1; i < s->nbanks; i++) if (!strcmp(s->banks[i].name, keep)) nb = i;
+    s->browse_bank = nb;
+    load_bank(s, nb);
+    select_sound(s, 0);
 }
 static void tp_destroy(void *h) {
     tp_t *s = h;
@@ -979,6 +1005,8 @@ static void state_set(tp_t *s, const char *val) {
         while (*q == ' ' || *q == '\n') q++;
     } else return;
     all_off(s);
+    const char *tf = strstr(val, "\nTF ");        /* Sample Sounds first: the saved bank number counts the filtered banks */
+    set_sample_filter(s, tf ? atoi(tf + 4) : 0);
     if (b >= 0 && b < s->nbanks && b != s->cur_bank) load_bank(s, b);
     s->kit = clampi(kit, 0, 2); s->kit_base = clampi(kb, 0, 112); s->pan = clampi(pan, 0, 127);
     s->nv = clampi(nv, 1, MAXV); s->mono = clampi(mono, 0, 6); s->root = clampi(root, 0, 127); s->kit_page = clampi(kp, 0, 7);
@@ -1020,6 +1048,7 @@ static int state_get(tp_t *s, char *b, int n) {
         for (int k = 16 * s->kit_page; k < 16 * s->kit_page + 16; k++) o += snprintf(b + o, (size_t)(n - o), " %02x%02x%02x", s->chk[k][0], s->chk[k][1], s->chk[k][2]);
         o += snprintf(b + o, (size_t)(n - o), " %02x%02x%02x\n", s->chk[s->cur_prog][0], s->chk[s->cur_prog][1], s->chk[s->cur_prog][2]);
     }
+    if (s->skip && o + 8 < n) o += snprintf(b + o, (size_t)(n - o), "TF %d\n", s->skip);
     return o < n ? o + 1 : n;
 }
 
@@ -1032,6 +1061,7 @@ static void tp_set_param(void *h, const char *k, const char *val) {
     if (!strcmp(k, "bank")) { if (x != s->cur_bank && x < s->nbanks) { load_bank(s, x); select_sound(s, 0); } }
     else if (!strcmp(k, "program")) { if (x != s->cur_prog) select_sound(s, x); }
     else if (!strcmp(k, "browse_bank")) { if (x != s->browse_bank && x >= 0 && x < s->nbanks) { s->browse_page = 0; browse_load(s, x); } }
+    else if (!strcmp(k, "sample_filter")) set_sample_filter(s, x);
     else if (!strcmp(k, "bank_page")) { s->bank_page = clampi(x, 0, s->nbanks ? (s->nbanks - 1) / BANK_SLOTS : 0); s->display_rev++; }
     else if (!strcmp(k, "patch_page")) { s->browse_page = clampi(x, 0, s->bcount ? (s->bcount - 1) / SOUND_SLOTS : 0); s->display_rev++; }
     else if (!strncmp(k, "bank_slot_", 10)) {      /* a tap on a bank tile: browse it (loads nothing) */
@@ -1087,6 +1117,7 @@ static int tp_get_param(void *h, const char *k, char *b, int n) {
             return v ? snprintf(b, z, "Voice %d", v) + 1 : snprintf(b, z, "Any voice") + 1;
         }
         if (!strcmp(base, "browse_bank")) return snprintf(b, z, "%d %s", s->browse_bank + 1, s->banks[s->browse_bank].name) + 1;
+        if (!strcmp(base, "bank_page")) return snprintf(b, z, "Page %d/%d", s->bank_page + 1, s->nbanks ? (s->nbanks - 1) / BANK_SLOTS + 1 : 1) + 1;
         if (!strcmp(base, "patch_page")) return snprintf(b, z, "Page %d/%d", s->browse_page + 1, s->bcount ? (s->bcount - 1) / SOUND_SLOTS + 1 : 1) + 1;
         if (!strcmp(base, "program")) return snprintf(b, z, "%03d %s", s->cur_prog + 1, s->banknames[s->cur_prog]) + 1;
         if (!strcmp(base, "osc3_sample") || !strcmp(base, "osc4_sample")) {
@@ -1114,6 +1145,7 @@ static int tp_get_param(void *h, const char *k, char *b, int n) {
     if (!strcmp(k, "browse_bank")) return snprintf(b, z, "%d", s->browse_bank) + 1;
     if (!strcmp(k, "patch_page")) return snprintf(b, z, "%d", s->browse_page) + 1;
     if (!strcmp(k, "bank_page")) return snprintf(b, z, "%d", s->bank_page) + 1;
+    if (!strcmp(k, "sample_filter")) return snprintf(b, z, "%d", s->skip) + 1;
     if (!strcmp(k, "bank_range")) {
         int a = s->bank_page * BANK_SLOTS;
         return snprintf(b, z, "Banks %d-%d of %d", a + 1, a + BANK_SLOTS < s->nbanks ? a + BANK_SLOTS : s->nbanks, s->nbanks) + 1;

@@ -115,6 +115,8 @@ EXTRA = [
     {"key": "patch_slot_33", "name": "Sound 33", "min": 0, "max": 1, "default": 0, "display": "string"},
     # the bank list's page (22 banks a page; up to 64 banks) with its two step triggers
     {"key": "bank_page", "name": "Bank Page", "min": 0, "max": 2, "default": 0, "display": "int", "dynamic_display": True},
+    # leaves out the sounds of the sound dumps that play PCM samples (we have none): a stand-in plays for the others
+    {"key": "sample_filter", "name": "Sample Sounds", "options": ["All sounds", "No drum samples", "No samples"], "default": 0},
 ] + [{"key": "bank_page_%s" % d, "name": "Bank Page %s" % ("<" if d == "prev" else ">"), "min": 0, "max": 1, "default": 0, "momentary": True,
       "type": "trigger", "step_of": "bank_page", "step_delta": -1 if d == "prev" else 1} for d in ("prev", "next")]
 

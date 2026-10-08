@@ -2714,6 +2714,16 @@
    "dynamic_display": true
   },
   {
+   "key": "sample_filter",
+   "name": "Sample Sounds",
+   "options": [
+    "All sounds",
+    "No drum samples",
+    "No samples"
+   ],
+   "default": 0
+  },
+  {
    "key": "bank_page_prev",
    "name": "Bank Page <",
    "min": 0,

@@ -47,11 +47,12 @@ The plugin makes `SYSEX` and `SAMPLES` folders inside its own folder on first lo
 
 - **Sounds**: put Tempest `.syx` files in `SYSEX` (or next to the plugin): sound dumps and project dumps (a project's sounds become
   banks of 128). Without files, a bank of this project's own sounds plays.
-- **Leaving sounds out**: `SYSEX/import.txt` (written on first load, commented) says what to skip when sound dumps are read:
-  `skip_samples = all` drops every sound that plays a PCM sample (the instrument's drum and percussion samples are not in this
-  plugin), `drums` keeps the ones that only use the noises (which have stand-ins), `off` (default) keeps all; `dedupe = on` (default)
-  drops a sound identical in all 127 fields to one already loaded from an earlier file, so the same sound in two sets appears once.
-  Project dumps are never filtered: their beats are the kit layout.
+- **Leaving sounds out**: the **Sample Sounds** selector at the foot of the BANKS page (also a Q-Link there) leaves out the sounds of
+  your sound dumps that play PCM samples, which this plugin has only stand-ins for: *All sounds* (default), *No drum samples* (keeps the
+  sounds that use only the noises, which have good stand-ins) or *No samples*. Changing it rebuilds the bank list and loads the
+  first sound of the same-named bank; it is saved with the project. Project dumps are never filtered: their beats are the kit layout.
+  `SYSEX/import.txt` (written on first load) has `dedupe = on|off`: a sound identical in all 127 fields to one already loaded from an
+  earlier file is left out, so a sound that is in two sets appears once.
 - **Samples**: the instrument's samples are not in its OS files. Oscillators 3/4 start with stand-ins of this project's own (noises,
   drum and percussion one-shots, single-cycle waves), chosen by each slot's group and name. Replace any slot with a WAV in
   `SAMPLES`: `037 anything.wav` (slot number) or `909ish.wav` (slot name); a WAV with "cycles" in its name and one cycle between cue
