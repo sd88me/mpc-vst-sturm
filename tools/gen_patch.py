@@ -113,7 +113,10 @@ EXTRA = [
     {"key": "voice_assign", "name": "Voice Assign", "min": 0, "max": 6, "default": 0, "display": "int", "dynamic_display": True},
     # the 33rd tile of the sound list (3 columns of 11): always blank, so a page of 32 sounds fills the grid
     {"key": "patch_slot_33", "name": "Sound 33", "min": 0, "max": 1, "default": 0, "display": "string"},
-]
+    # the bank list's page (22 banks a page; up to 64 banks) with its two step triggers
+    {"key": "bank_page", "name": "Bank Page", "min": 0, "max": 2, "default": 0, "display": "int", "dynamic_display": True},
+] + [{"key": "bank_page_%s" % d, "name": "Bank Page %s" % ("<" if d == "prev" else ">"), "min": 0, "max": 1, "default": 0, "momentary": True,
+      "type": "trigger", "step_of": "bank_page", "step_delta": -1 if d == "prev" else 1} for d in ("prev", "next")]
 
 def engine_names(var):
     """A name table of src/engine.c (the one place the destination and source names live)."""

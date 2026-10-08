@@ -47,14 +47,19 @@ The plugin makes `SYSEX` and `SAMPLES` folders inside its own folder on first lo
 
 - **Sounds**: put Tempest `.syx` files in `SYSEX` (or next to the plugin): sound dumps and project dumps (a project's sounds become
   banks of 128). Without files, a bank of this project's own sounds plays.
+- **Leaving sounds out**: `SYSEX/import.txt` (written on first load, commented) says what to skip when sound dumps are read:
+  `skip_samples = all` drops every sound that plays a PCM sample (the instrument's drum and percussion samples are not in this
+  plugin), `drums` keeps the ones that only use the noises (which have stand-ins), `off` (default) keeps all; `dedupe = on` (default)
+  drops a sound identical in all 127 fields to one already loaded from an earlier file, so the same sound in two sets appears once.
+  Project dumps are never filtered: their beats are the kit layout.
 - **Samples**: the instrument's samples are not in its OS files. Oscillators 3/4 start with stand-ins of this project's own (noises,
   drum and percussion one-shots, single-cycle waves), chosen by each slot's group and name. Replace any slot with a WAV in
   `SAMPLES`: `037 anything.wav` (slot number) or `909ish.wav` (slot name); a WAV with "cycles" in its name and one cycle between cue
   points fills the 96 wave slots (Prophet VS order) in turn.
   **Prophet VS wave ROM**: the digital oscillators' single-cycle waves are the Prophet VS's. If you have its program ROM chips (the two
   27256 images, or one 64 KB image) put them in `SAMPLES`; the 95 ROM waves then replace the wave slots, exactly as read (12-bit),
-  and nothing from them is stored or shipped. Which ROM wave belongs in which of the instrument's slots is only verified for the
-  first three (sine, saw, square); the rest assumes the ROM's own order, and `SAMPLES/vsmap.txt` (`<wave slot 0-95> <ROM wave 0-94 or -1>`
+  and nothing from them is stored or shipped. The Arturia Prophet-VS V's `waverom.bin` (24 320 bytes, the same 95 waves) is accepted too. Which ROM wave belongs in which slot is only verified for the
+  first three (sine, saw, square) and judged from the wave names above that: the ROM has 95 waves for 96 slots, so slots 0-4 take ROM waves 0-4, slot 5 is left to its stand-in (a guess) and slots 6-95 take ROM waves 5-94. `SAMPLES/vsmap.txt` (`<wave slot 0-95> <ROM wave 0-94 or -1>`
   per line) overrides it.
   The release ships the stand-ins that are plain signals as WAVs in `SAMPLES` (the ten noises, the sine and the 96 waves; the
   `standins/` folder, made by `tools/render_samples.c`) so you can open, edit or overwrite them. The plugin sounds the same without them.
@@ -62,7 +67,7 @@ The plugin makes `SYSEX` and `SAMPLES` folders inside its own folder on first lo
 ## Using it
 
 Seven tabs: **SOUND** (the sound stepper and name, the status line, the voice settings, a panel row of the most used controls, and the
-kit: Kit Mode, Kit Notes, Kit Page, Choke 1/2 and Voice Assign), **BANKS** (a column of banks and three columns of the browsed bank's
+kit: Kit Mode, Kit Notes, Kit Page, Choke 1/2 and Voice Assign), **BANKS** (two columns of banks (22 a page, a Bank Page control and Q-Links to turn it) and two columns of the browsed bank's
 sounds: tap a bank to look at it, which loads nothing, tap a sound to load it; the Q-Links are bank, sound, page back and page on,
 and the data wheel steps whichever is selected), **OSC** (oscillators 1-4), **FILTER** (low pass and its envelope, high pass,
 feedback, amp, a drawing of the voice's signal path), **ENV** (amp, pitch, aux 1, aux 2 envelopes), **LFO**, **MODS** (eight paths).

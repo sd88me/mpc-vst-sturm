@@ -190,15 +190,16 @@ int main(int argc, char **argv) {
             fclose(f);
             snprintf(path, sizeof path, "%s/vsmap.txt", dir);
             f = fopen(path, "w");
-            fprintf(f, "# wave slot, rom wave\n5 0\n");
+            fprintf(f, "# wave slot, rom wave\n7 0\n");
             fclose(f);
             tp_samples_t *vs = samples_open();
             int n = samples_load_dir(vs, dir);
-            /* slot 3 is ROM wave 3 = four cycles of sine; slot 5 was mapped to ROM wave 0 = one cycle */
-            const float *w3 = samples_wave(vs, TP_FIRST_WAVE + 3, 0), *w5 = samples_wave(vs, TP_FIRST_WAVE + 5, 0);
-            int c3 = 0, c5 = 0;
-            for (int i = 0; w3 && w5 && i < TP_WLEN; i++) { int q = (i + TP_WLEN - 1) % TP_WLEN; c3 += w3[q] < 0 && w3[i] >= 0; c5 += w5[q] < 0 && w5[i] >= 0; }
-            CHECK(n == 95 && w3 && w5 && c3 == 4 && c5 == 1 && !samples_get(vs, TP_FIRST_WAVE + 95)->user, "VS ROM image: %d slots loaded, slot 3 has %d cycles (4), mapped slot 5 has %d (1)", n, c3, c5);
+            /* slot 3 is ROM wave 3 = four cycles of sine; slot 6 is ROM wave 5 (slot 5 has none) = six; slot 7 was mapped to ROM wave 0 = one */
+            const float *w3 = samples_wave(vs, TP_FIRST_WAVE + 3, 0), *w6 = samples_wave(vs, TP_FIRST_WAVE + 6, 0), *w7 = samples_wave(vs, TP_FIRST_WAVE + 7, 0);
+            int c3 = 0, c6 = 0, c7 = 0;
+            for (int i = 0; w3 && w6 && w7 && i < TP_WLEN; i++) { int q = (i + TP_WLEN - 1) % TP_WLEN; c3 += w3[q] < 0 && w3[i] >= 0; c6 += w6[q] < 0 && w6[i] >= 0; c7 += w7[q] < 0 && w7[i] >= 0; }
+            CHECK(n == 95 && w3 && w6 && w7 && c3 == 4 && c6 == 6 && c7 == 1 && !samples_get(vs, TP_FIRST_WAVE + 5)->user && samples_get(vs, TP_FIRST_WAVE + 95)->user,
+                  "VS ROM image: %d slots loaded, slot 3 has %d cycles (4), slot 6 has %d (6), mapped slot 7 has %d (1)", n, c3, c6, c7);
             samples_close(vs);
             snprintf(path, sizeof path, "%s/vs.bin", dir); remove(path);
             snprintf(path, sizeof path, "%s/vsmap.txt", dir); remove(path);

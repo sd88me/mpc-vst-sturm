@@ -2703,6 +2703,37 @@
    "max": 1,
    "default": 0,
    "display": "string"
+  },
+  {
+   "key": "bank_page",
+   "name": "Bank Page",
+   "min": 0,
+   "max": 2,
+   "default": 0,
+   "display": "int",
+   "dynamic_display": true
+  },
+  {
+   "key": "bank_page_prev",
+   "name": "Bank Page <",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "momentary": true,
+   "type": "trigger",
+   "step_of": "bank_page",
+   "step_delta": -1
+  },
+  {
+   "key": "bank_page_next",
+   "name": "Bank Page >",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "momentary": true,
+   "type": "trigger",
+   "step_of": "bank_page",
+   "step_delta": 1
   }
  ]
 }

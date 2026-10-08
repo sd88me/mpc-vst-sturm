@@ -620,7 +620,11 @@ int samples_load_dir(tp_samples_t *ss, const char *dir) {
     uint8_t *rom[6] = {0};              /* Prophet VS program ROM images (16, 32 or 64 KB files), paired up after the scan */
     size_t romlen[6];
     int nrom = 0, vsmap[96];
-    for (int i = 0; i < 96; i++) vsmap[i] = i < VSROM_WAVES ? i : -1;
+    /* default map (2026-10-08): the manual's 96 slots against the ROM's 95 waves. The names at the top (Bell Partials 1 and 2, the nine plain
+     * tones, Piano2, the noise last) line up with ROM wave n-1, slots 0-4 with ROM wave n, so one slot between them has no ROM wave: slot 5
+     * is the guess (docs/STATUS.md) and stays a stand-in. */
+    for (int i = 0; i < 96; i++) vsmap[i] = i < 5 ? i : i == 5 ? -1 : i - 1;
+    float *arturia = NULL;              /* Arturia's waverom.bin (95 x 128 little-endian 16-bit words, 12 bits in the top) read as it is */
     while ((e = readdir(d))) {
         size_t l = strlen(e->d_name);
         if (l < 5) continue;
@@ -645,7 +649,12 @@ int samples_load_dir(tp_samples_t *ss, const char *dir) {
         long n = ftell(f);
         fseek(f, 0, SEEK_SET);
         if (isrom) {
-            if ((n == 16384 || n == 32768 || n == 65536) && nrom < 6 && (rom[nrom] = malloc((size_t)n))) {
+            if (n == VSROM_WAVES * VSROM_WLEN * 2 && !arturia && (arturia = malloc(sizeof(float) * VSROM_WAVES * VSROM_WLEN))) {
+                int16_t *r = malloc((size_t)n);
+                if (r && fread(r, 1, (size_t)n, f) == (size_t)n) for (int i = 0; i < VSROM_WAVES * VSROM_WLEN; i++) arturia[i] = (float)r[i] / 32768.0f;
+                else { free(arturia); arturia = NULL; }
+                free(r);
+            } else if ((n == 16384 || n == 32768 || n == 65536) && nrom < 6 && (rom[nrom] = malloc((size_t)n))) {
                 if (fread(rom[nrom], 1, (size_t)n, f) == (size_t)n) romlen[nrom++] = (size_t)n; else { free(rom[nrom]); rom[nrom] = NULL; }
             }
             fclose(f);
@@ -676,6 +685,8 @@ int samples_load_dir(tp_samples_t *ss, const char *dir) {
     for (int a = 0; vw && a < nrom && !got; a++)
         for (int b = a; b < nrom && !got; b++)
             got = vsrom_decode(rom[a], romlen[a], a == b ? NULL : rom[b], romlen[b], vw) == VSROM_WAVES;
+    if (!got && arturia) { memcpy(vw ? (void *)vw : (void *)(vw = malloc(sizeof(float) * VSROM_WAVES * VSROM_WLEN)), arturia, sizeof(float) * VSROM_WAVES * VSROM_WLEN); got = 1; }
+    free(arturia);
     if (got)
         for (int i = 0; i < 96; i++) {
             if (vsmap[i] < 0) continue;

@@ -10,6 +10,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
@@ -100,6 +101,7 @@ typedef struct {
     tp_samples_t *smp;
     bankref_t banks[MAXBANKS];
     int nbanks, cur_bank, cur_prog;
+    int bank_page;                              /* BANKS page: which 22 banks the bank list shows (follows the browsed bank unless stepped) */
     int browse_bank, browse_page, bcount;       /* BANKS page: the bank being looked at (loads nothing), its page, its sound count */
     char bnames[128][TSND_NAME];
     uint8_t bankdata[128][NFIELD];
@@ -187,9 +189,43 @@ static void cache_cb(void *c, const uint8_t f[NFIELD], const char *name, const u
     bc->ch[k][0] = ch[0]; bc->ch[k][1] = ch[1];
     if (k + 1 > bc->n) bc->n = k + 1;
 }
+/* SYSEX/import.txt: what to leave out of sound dumps (project dumps are never filtered: their beats are the kit layout)
+ *   skip_samples = off | drums | all   leave out sounds that play a PCM sample (we have no sample set): "drums" keeps the sounds that
+ *                                      only use the noises (those have stand-ins), "all" drops any PCM sample (default off)
+ *   dedupe = on | off                  leave out a sound identical in all 127 fields to one already loaded from an earlier file (default on) */
+typedef struct { int skip, dedupe, n, cap; uint8_t (*seen)[NFIELD]; } import_t;
+static void import_cfg(import_t *im, const char *dir) {
+    char path[PATHLEN], line[160];
+    snprintf(path, sizeof path, "%s/import.txt", dir);
+    FILE *f = fopen(path, "r");
+    while (f && fgets(line, sizeof line, f)) {
+        char k[40] = "", v[40] = "";
+        if (line[0] == '#' || sscanf(line, " %39[a-z_] = %39s", k, v) != 2) continue;
+        if (!strcmp(k, "skip_samples")) im->skip = !strcmp(v, "all") ? 2 : !strcmp(v, "drums") ? 1 : 0;
+        else if (!strcmp(k, "dedupe")) im->dedupe = strcmp(v, "off") != 0;
+    }
+    if (f) fclose(f);
+}
+static int uses_pcm(const uint8_t *f, int mode) {      /* an oscillator with level that plays a PCM slot (1-366; 1-10 are the noises) */
+    for (int o = 0; o < 2; o++) {
+        int k = f[o ? P_OSC4_SBANK : P_OSC3_SBANK] * 128 + f[o ? P_OSC4_SNUM : P_OSC3_SNUM];
+        if (f[o ? P_OSC4_LEVEL : P_OSC3_LEVEL] && k >= (mode == 1 ? 11 : 1) && k <= 366) return 1;
+    }
+    return 0;
+}
+typedef struct { uint8_t (*f)[NFIELD]; char (*nm)[TSND_NAME]; uint8_t (*ch)[2]; int n, cap; } collect_t;
+static void collect_cb(void *c, const uint8_t f[NFIELD], const char *name, const uint8_t ch[2]) {
+    collect_t *x = c;
+    if (x->n == x->cap) {
+        x->cap = x->cap ? x->cap * 2 : 512;
+        x->f = realloc(x->f, (size_t)x->cap * NFIELD); x->nm = realloc(x->nm, (size_t)x->cap * TSND_NAME); x->ch = realloc(x->ch, (size_t)x->cap * 2);
+    }
+    memcpy(x->f[x->n], f, NFIELD); snprintf(x->nm[x->n], TSND_NAME, "%s", name); memcpy(x->ch[x->n], ch, 2); x->n++;
+}
 static int cmpstr(const void *a, const void *b) { return strcasecmp(*(char *const *)a, *(char *const *)b); }
 /* Every .syx with sounds becomes a bank (128 sounds each; a project of 512 sounds becomes four). */
-static void scan_dir(tp_t *s, const char *dir) {
+static void scan_dir(tp_t *s, const char *dir, import_t *im) {
+    import_cfg(im, dir);
     DIR *d = opendir(dir);
     if (!d) return;
     char *names[512];
@@ -206,13 +242,44 @@ static void scan_dir(tp_t *s, const char *dir) {
         snprintf(path, sizeof path, "%s/%s", dir, names[i]);
         size_t len;
         uint8_t *buf = read_file(path, &len);
-        loadctx_t lc = {s, 0, 0};
-        if (buf) tsnd_scan(buf, len, count_cb, &lc);
-        free(buf);
         char base[40];
         snprintf(base, sizeof base, "%s", names[i]);
         char *dot = strrchr(base, '.');
         if (dot) *dot = 0;
+        size_t p0 = 0;
+        while (buf && p0 < len && buf[p0] != 0xF0) p0++;
+        if (buf && p0 + 3 < len && buf[p0 + 3] == 0x63 && (im->skip || im->dedupe)) {   /* a sound dump: leave out what import.txt says */
+            collect_t col = {0};
+            tsnd_scan_ex(buf, len, collect_cb, &col);
+            int kept = 0;
+            for (int k = 0; k < col.n; k++) {
+                int dup = 0;
+                for (int j = 0; im->dedupe && !dup && j < im->n; j++) dup = !memcmp(im->seen[j], col.f[k], NFIELD);
+                if (dup || (im->skip && uses_pcm(col.f[k], im->skip))) continue;
+                if (im->n == im->cap) { im->cap = im->cap ? im->cap * 2 : 512; im->seen = realloc(im->seen, (size_t)im->cap * NFIELD); }
+                memcpy(im->seen[im->n++], col.f[k], NFIELD);
+                if (kept != k) { memcpy(col.f[kept], col.f[k], NFIELD); memcpy(col.nm[kept], col.nm[k], TSND_NAME); memcpy(col.ch[kept], col.ch[k], 2); }
+                kept++;
+            }
+            for (int first = 0; first < kept && s->nbanks < MAXBANKS; first += 128) {
+                bankref_t *r = &s->banks[s->nbanks++];
+                r->c = calloc(1, sizeof(bcache_t));
+                if (kept > 128) snprintf(r->name, sizeof r->name, "%.30s %d", base, first / 128 + 1);
+                else snprintf(r->name, sizeof r->name, "%s", base);
+                snprintf(r->path, sizeof r->path, "%s", path);
+                r->first = first;
+                for (int k = first; k < kept && k < first + 128; k++) {
+                    int q = k - first;
+                    memcpy(r->c->f[q], col.f[k], NFIELD); snprintf(r->c->names[q], TSND_NAME, "%s", col.nm[k]);
+                    r->c->ch[q][0] = col.ch[k][0]; r->c->ch[q][1] = col.ch[k][1]; r->c->n = q + 1;
+                }
+            }
+            free(col.f); free(col.nm); free(col.ch); free(buf); free(names[i]);
+            continue;
+        }
+        loadctx_t lc = {s, 0, 0};
+        if (buf) tsnd_scan(buf, len, count_cb, &lc);
+        free(buf);
         int b0 = s->nbanks;
         for (int first = 0; first < lc.got && s->nbanks < MAXBANKS; first += 128) {
             bankref_t *r = &s->banks[s->nbanks++];
@@ -241,6 +308,7 @@ static void name_cb(void *c, const uint8_t f[NFIELD], const char *name) {
 static void browse_load(tp_t *s, int bi) {
     bi = clampi(bi, 0, s->nbanks - 1);
     s->browse_bank = bi;
+    s->bank_page = bi / BANK_SLOTS;
     s->bcount = 0;
     if (bi == 0) {
         uint8_t f[NFIELD];
@@ -736,8 +804,22 @@ static void *tp_create(const char *dir) {
         char sub[PATHLEN];
         snprintf(sub, sizeof sub, "%s/SYSEX", dir);
         mkdir(sub, 0755);
-        scan_dir(s, dir);
-        scan_dir(s, sub);
+        char cfg[PATHLEN];
+        snprintf(cfg, sizeof cfg, "%s/import.txt", sub);
+        if (access(cfg, F_OK) != 0) {          /* a commented template, so the options can be found */
+            FILE *cf = fopen(cfg, "w");
+            if (cf) {
+                fputs("# What to leave out when the sound dumps in this folder are read (project dumps are never filtered).\n"
+                      "# skip_samples: off | drums (leave out sounds that play drum/percussion samples; noises are kept) | all (any PCM sample)\n"
+                      "# dedupe: on | off (leave out a sound identical to one already loaded from an earlier file)\n"
+                      "skip_samples = off\ndedupe = on\n", cf);
+                fclose(cf);
+            }
+        }
+        import_t im = {0, 1, 0, 0, NULL};
+        scan_dir(s, dir, &im);
+        scan_dir(s, sub, &im);
+        free(im.seen);
         snprintf(sub, sizeof sub, "%s/SAMPLES", dir);
         mkdir(sub, 0755);
         samples_load_dir(s->smp, sub);
@@ -950,9 +1032,10 @@ static void tp_set_param(void *h, const char *k, const char *val) {
     if (!strcmp(k, "bank")) { if (x != s->cur_bank && x < s->nbanks) { load_bank(s, x); select_sound(s, 0); } }
     else if (!strcmp(k, "program")) { if (x != s->cur_prog) select_sound(s, x); }
     else if (!strcmp(k, "browse_bank")) { if (x != s->browse_bank && x >= 0 && x < s->nbanks) { s->browse_page = 0; browse_load(s, x); } }
+    else if (!strcmp(k, "bank_page")) { s->bank_page = clampi(x, 0, s->nbanks ? (s->nbanks - 1) / BANK_SLOTS : 0); s->display_rev++; }
     else if (!strcmp(k, "patch_page")) { s->browse_page = clampi(x, 0, s->bcount ? (s->bcount - 1) / SOUND_SLOTS : 0); s->display_rev++; }
     else if (!strncmp(k, "bank_slot_", 10)) {      /* a tap on a bank tile: browse it (loads nothing) */
-        int b = s->browse_bank / BANK_SLOTS * BANK_SLOTS + atoi(k + 10) - 1;
+        int b = s->bank_page * BANK_SLOTS + atoi(k + 10) - 1;
         if (b >= 0 && b < s->nbanks) { s->browse_page = 0; browse_load(s, b); }
     }
     else if (!strncmp(k, "patch_slot_", 11)) {      /* a tap on a sound tile: load that bank and sound */
@@ -1030,15 +1113,16 @@ static int tp_get_param(void *h, const char *k, char *b, int n) {
     if (!strcmp(k, "voice_assign")) return snprintf(b, z, "%d", s->chk[s->cur_prog][2]) + 1;
     if (!strcmp(k, "browse_bank")) return snprintf(b, z, "%d", s->browse_bank) + 1;
     if (!strcmp(k, "patch_page")) return snprintf(b, z, "%d", s->browse_page) + 1;
+    if (!strcmp(k, "bank_page")) return snprintf(b, z, "%d", s->bank_page) + 1;
     if (!strcmp(k, "bank_range")) {
-        int a = s->browse_bank / BANK_SLOTS * BANK_SLOTS;
+        int a = s->bank_page * BANK_SLOTS;
         return snprintf(b, z, "Banks %d-%d of %d", a + 1, a + BANK_SLOTS < s->nbanks ? a + BANK_SLOTS : s->nbanks, s->nbanks) + 1;
     }
     {
         size_t kl2 = strlen(k);
         int on = kl2 > 3 && !strcmp(k + kl2 - 3, "_on");
         if (!strncmp(k, "bank_slot_", 10)) {
-            int bi = s->browse_bank / BANK_SLOTS * BANK_SLOTS + atoi(k + 10) - 1;
+            int bi = s->bank_page * BANK_SLOTS + atoi(k + 10) - 1;
             if (on) return snprintf(b, z, "%d", bi == s->browse_bank) + 1;
             if (bi < 0 || bi >= s->nbanks) { b[0] = 0; return 1; }
             return snprintf(b, z, "%d %s", bi + 1, s->banks[bi].name) + 1;

@@ -8,8 +8,8 @@
  *     (a looping slot loops the whole file);
  *   - "367 anything.wav" (the sine slot): the whole file is one cycle, looped at C3;
  *   - the Prophet VS's program ROM chips (two 16/32 KB .bin or .rom files, or one 64 KB image): the 95 ROM waves replace the wave
- *     slots, ROM wave j at wave slot j (368 + j). Only the first three (sine, saw, square) are checked against the instrument's list:
- *     the rest of the map is a guess, and "vsmap.txt" ("<wave slot 0-95> <rom wave 0-94 or -1>" per line) overrides it;
+ *     slots, ROM waves 0-4 at slots 368-372, wave j (5-94) at slot 369 + j. Only the first three (sine, saw, square) are checked against the instrument's list:
+ *     the rest of the map is a guess (docs/STATUS.md), and "vsmap.txt" ("<wave slot 0-95> <rom wave 0-94 or -1>" per line) overrides it;
  *   - a WAV of single cycles (cue points between cycles, or 128-sample cycles) whose name contains "cycles": the wave slots in order.
  * Audio is 16-bit at 44.1 kHz inside; WAVs are resampled (linear) and mixed to mono. */
 #pragma once
