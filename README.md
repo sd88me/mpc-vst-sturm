@@ -7,6 +7,8 @@ a Curtis-style 2/4-pole low-pass that rings on its own, a 2-pole high-pass, feed
 two LFOs and eight modulation paths. A sound is the instrument's own 127 fields, so Tempest sound and project dumps load as
 they are.
 
+![Sturm's SOUND page on an MPC screen](docs/img/sturm.png)
+
 *Sturm (German for storm) is an independent project, not affiliated with or endorsed by Dave Smith Instruments or Sequential.*
 
 **Status: first device build.** Installed and played on a Force; it sounds right to the author's ear, but the analog parts
