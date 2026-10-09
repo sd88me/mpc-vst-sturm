@@ -75,6 +75,7 @@ typedef struct {
     /* control results */
     float inc[2], sinc[2], lvl12[2], lvl34[2], sub, duty[2], fbk, prepost;
     int shape[2];
+    float scut, sres; int sm_init;   /* knob values smoothed against zipper steps */
     float cut, cut_prev, res, am, vca, vca_prev, panl, panr, hpf_hz;
     /* audio state */
     float hp[2], last_l, hz_prev;
@@ -678,10 +679,13 @@ static void voice_control(tp_t *s, voice_t *v) {
     v->fbk = 7.0f * fbv * sqrtf(fbv);    /* loop gain: a mild fuzz low down, the factory kicks (72-115) ring on it alone */
 
     /* lowpass: base + envelope + key tracking (64 = a semitone per note) + modulation */
-    float cut = PV(v, P_LPF_FREQ) + env[E_LP] * eamt[E_LP] + (v->key[0] - s->root) * PV(v, P_LPF_KEY) / 64.0f + d[D_LP];
+    if (!v->sm_init) { v->scut = (float)PV(v, P_LPF_FREQ); v->sres = (float)PV(v, P_LPF_RES); v->sm_init = 1; }
+    v->scut += ((float)PV(v, P_LPF_FREQ) - v->scut) * 0.03f;
+    v->sres += ((float)PV(v, P_LPF_RES) - v->sres) * 0.03f;
+    float cut = v->scut + env[E_LP] * eamt[E_LP] + (v->key[0] - s->root) * PV(v, P_LPF_KEY) / 64.0f + d[D_LP];
     v->cut_prev = v->cut;
     v->cut = clampf(cut, -40, 200);
-    float r = clampf(PV(v, P_LPF_RES) + d[D_RES], 0, 127) / 127.0f;
+    float r = clampf(v->sres + d[D_RES], 0, 127) / 127.0f;
     v->res = r;
     v->am = clampf(PV(v, P_AUDIO_MOD) + d[D_FM], 0, 127) * 0.38f;
     int hpv = PV(v, P_HPF_FREQ);
