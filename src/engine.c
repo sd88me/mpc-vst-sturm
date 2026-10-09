@@ -75,7 +75,7 @@ typedef struct {
     /* control results */
     float inc[2], sinc[2], lvl12[2], lvl34[2], sub, duty[2], fbk, prepost;
     int shape[2];
-    float scut, sres; int sm_init;   /* knob values smoothed against zipper steps */
+    float sfb, sam, svol; float scut, sres; int sm_init;   /* knob values smoothed against zipper steps */
     float cut, cut_prev, res, am, vca, vca_prev, panl, panr, hpf_hz;
     /* audio state */
     float hp[2], last_l, hz_prev;
@@ -675,19 +675,21 @@ static void voice_control(tp_t *s, voice_t *v) {
         if (sh >= 4 && (pw <= 0 || pw >= 99)) v->shape[c] = 5;   /* the pulse goes flat at the extremes */
     }
     v->prepost = PV(v, P_PREPOST) / 127.0f;
-    float fbv = clampf(PV(v, P_FEEDBACK) + d[D_FB], 0, 127) / 127.0f;
+    float fbv = clampf(v->sfb + d[D_FB], 0, 127) / 127.0f;
     v->fbk = 7.0f * fbv * sqrtf(fbv);    /* loop gain: a mild fuzz low down, the factory kicks (72-115) ring on it alone */
 
     /* lowpass: base + envelope + key tracking (64 = a semitone per note) + modulation */
-    if (!v->sm_init) { v->scut = (float)PV(v, P_LPF_FREQ); v->sres = (float)PV(v, P_LPF_RES); v->sm_init = 1; }
+    if (!v->sm_init) { v->sfb = (float)PV(v, P_FEEDBACK); v->sam = (float)PV(v, P_AUDIO_MOD); v->svol = (float)PV(v, P_VOLUME); v->scut = (float)PV(v, P_LPF_FREQ); v->sres = (float)PV(v, P_LPF_RES); v->sm_init = 1; }
     v->scut += ((float)PV(v, P_LPF_FREQ) - v->scut) * 0.03f;
     v->sres += ((float)PV(v, P_LPF_RES) - v->sres) * 0.03f;
+    v->sfb += ((float)PV(v, P_FEEDBACK) - v->sfb) * 0.03f; v->sam += ((float)PV(v, P_AUDIO_MOD) - v->sam) * 0.03f;
+    v->svol += ((float)PV(v, P_VOLUME) - v->svol) * 0.03f;
     float cut = v->scut + env[E_LP] * eamt[E_LP] + (v->key[0] - s->root) * PV(v, P_LPF_KEY) / 64.0f + d[D_LP];
     v->cut_prev = v->cut;
     v->cut = clampf(cut, -40, 200);
     float r = clampf(v->sres + d[D_RES], 0, 127) / 127.0f;
     v->res = r;
-    v->am = clampf(PV(v, P_AUDIO_MOD) + d[D_FM], 0, 127) * 0.38f;
+    v->am = clampf(v->sam + d[D_FM], 0, 127) * 0.38f;
     int hpv = PV(v, P_HPF_FREQ);
     float hv = hpv + (v->key[0] - s->root) * PV(v, P_HPF_KEY) / 64.0f + d[D_HP];
     v->hpf_hz = (hpv > 0 || d[D_HP] > 0) && hv > 0 ? fminf(tp_hpf_hz(hv), 0.45f * FS) : 0;
@@ -737,7 +739,7 @@ static float sample_osc(tp_t *s, voice_t *v, int o) {
 /* One voice, n samples (n <= CTL), added into out[] (stereo float). */
 static void voice_audio(tp_t *s, voice_t *v, float *out, int n) {
     int four = PV(v, P_POLES), sync = PV(v, P_SYNC);
-    float vol = PV(v, P_VOLUME) / 127.0f;
+    float vol = v->svol / 127.0f;
     float hg = 0, ha = 0;
     if (v->hpf_hz > 0) { hg = tanf(3.14159265f * v->hpf_hz / FS); ha = 1 / (1 + hg * (hg + 1.4142f)); }
     for (int i = 0; i < n; i++) {
