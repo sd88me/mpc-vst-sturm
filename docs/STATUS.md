@@ -82,3 +82,5 @@
 - SOUND page: one stepper (number and name), as Morpho-PE's PROGRAM page. BANKS page: thinner pickers and page controls, clear of the panel
   titles and edges (checked on the Force). Skin: darker plate with lighter grey filled panels, knobs restyled after the panel (no cap, light rim).
 - Tests: distortion keeps the level, compress narrows loud against soft, the delay plays a repeat, the output state round-trips.
+- Release 0.1.1 (2026-10-09): the SOUND page redesign (rows fill the page, bigger names and values, pickers sized for their text, kit page as a popup), OUTPUT tab after ENV,
+  distortion level match at 85 % of the correction; internal version 1001. The bench (vst/bench.txt, p99 37.3 % in the Q-Link sweep, 26 % steady) is from 0.1.0: the only engine change since is a `powf` in the distortion's level match.

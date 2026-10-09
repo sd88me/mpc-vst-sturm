@@ -2,7 +2,7 @@
   "name": "Sturm-TP",
   "vendor": "sd88me",
   "uid": "StrM",
-  "version": 1000,
+  "version": 1001,
   "so": "sturm.so",
   "params": "params.json",
   "layout": "layout.conf",
