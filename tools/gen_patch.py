@@ -102,7 +102,7 @@ EXTRA = [
     # kit mode (append only): 16 notes from Kit Notes play the bank's first 16 sounds, as the instrument's pads play a beat's sounds
     {"key": "kit", "name": "Kit Mode", "options": ["Off", "On", "On + Select"], "default": 0},
     {"key": "kit_base", "name": "Kit Notes", "min": 0, "max": 112, "default": 36, "display": "int", "dynamic_display": True},
-    {"key": "kit_page", "name": "Kit Page", "min": 0, "max": 7, "default": 0, "display": "int", "dynamic_display": True},
+    {"key": "kit_page", "name": "Kit Page", "options": ["Sounds %d-%d" % (16 * i + 1, 16 * i + 16) for i in range(8)], "default": 0},
     # the BANKS page (append only), browse a bank without loading it, tap a sound to load it
     {"key": "browse_bank", "name": "Browse Bank", "min": 0, "max": 63, "default": 0, "display": "int", "dynamic_display": True},
     {"key": "patch_page", "name": "Sound Page", "min": 0, "max": 3, "default": 0, "display": "int", "dynamic_display": True},

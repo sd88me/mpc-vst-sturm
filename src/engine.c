@@ -1018,8 +1018,8 @@ static void tp_render(void *h, int16_t *out, int frames) {
             else if (s->cphase == 2) { if (--s->chold <= 0) s->cphase = 3; }
             else if (s->cphase == 3) { s->cenv -= cd; if (s->cenv <= 0) { s->cenv = 0; s->cphase = 0; } }
             if (s->sm_dist > 0.05f) {
-                /* level match: the distorted signal is scaled so its short-term power equals the clean input's (gain limited to -24..+12 dB),
-                 * whatever the input level, so turning the knob changes the sound and not the loudness */
+                /* level match: the distorted signal is scaled towards the clean input's short-term power (85 % of the correction in dB, gain limited
+                 * to -24..+12 dB), so turning the knob changes the sound far more than the loudness */
                 float pin = 0.5f * (L * L + R * R);
                 float in[2] = {L, R}, y[2];
                 for (int c = 0; c < 2; c++) {
@@ -1033,6 +1033,7 @@ static void tp_render(void *h, int16_t *out, int frames) {
                 float pout = 0.5f * (L * L + R * R);
                 s->lv_in += (pin - s->lv_in) * 0.0015f; s->lv_out += (pout - s->lv_out) * 0.0015f;
                 float want = sqrtf((s->lv_in + 1e-9f) / (s->lv_out + 1e-9f));
+                want = powf(want, 0.85f);                  /* not all of it: a little of the drive's own gain comes through */
                 want = want < 0.063f ? 0.063f : want > 4 ? 4 : want;
                 s->dgain += (want - s->dgain) * 0.002f;
                 L *= s->dgain; R *= s->dgain;

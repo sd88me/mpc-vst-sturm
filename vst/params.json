@@ -2161,11 +2161,17 @@
   {
    "key": "kit_page",
    "name": "Kit Page",
-   "min": 0,
-   "max": 7,
-   "default": 0,
-   "display": "int",
-   "dynamic_display": true
+   "options": [
+    "Sounds 1-16",
+    "Sounds 17-32",
+    "Sounds 33-48",
+    "Sounds 49-64",
+    "Sounds 65-80",
+    "Sounds 81-96",
+    "Sounds 97-112",
+    "Sounds 113-128"
+   ],
+   "default": 0
   },
   {
    "key": "browse_bank",

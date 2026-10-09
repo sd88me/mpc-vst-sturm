@@ -29,27 +29,29 @@ def popup_extra(key):
     g = SRC_GROUPS if key.endswith("_src") else DEST_GROUPS if key.endswith("_dest") else None
     return ' groups="%s" cw=104' % ",".join("%s:%d" % t for t in g) if g else ""
 
-def section(x, y, title, rows, w=None):
+def section(x, y, title, rows, w=None, rh=ROW, kr=24, ns=None, vs=None):
     """A frame whose rows are lists of (label, key); '~' marks a toggle (LED), '^' a popup, '' a knob, None an empty cell.
     With w, the frame is that wide and its cells spread evenly over it. Returns (keys in order, frame box)."""
     n = max(len(r) for r in rows)
     cell = CELL if w is None else w // n
-    w, h = (CELL * n if w is None else w), ROW * len(rows) - 4
+    w, h = (CELL * n if w is None else w), rh * len(rows) - 4
+    extra = (" ns=%d" % ns if ns else "") + (" vs=%d" % vs if vs else "")
+    dy = rh - ROW
     emit('frame x=%d y=%d w=%d h=%d title="%s"' % (x, y, w, h, title))
     keys = []
     for ri, items in enumerate(rows):
-        ry = y + ROW * ri
+        ry = y + rh * ri
         for ci, it in enumerate(items):
             if it is None:
                 continue
             label, key = it
             cx = x + cell * ci + cell // 2
             if key[0] == "~":
-                emit('toggle cx=%d cy=%d label="%s" key=%s look=led' % (cx, ry + 64, label, key[1:]))
+                emit('toggle cx=%d cy=%d label="%s" key=%s look=led' % (cx, ry + 64 + dy * 4 // 10, label, key[1:]))
             elif key[0] == "^":
-                emit('popup cx=%d cy=%d w=126 h=48 label="%s" key=%s%s' % (cx, ry + 96, label, key[1:], popup_extra(key[1:])))
+                emit('popup cx=%d cy=%d w=126 h=%d label="%s" key=%s%s' % (cx, ry + 96 + dy * 6 // 10, 48 + dy // 4, label, key[1:], popup_extra(key[1:])))
             else:
-                emit('knob cx=%d cy=%d r=24 label="%s" key=%s' % (cx, ry + 56, label, key))
+                emit('knob cx=%d cy=%d r=%d label="%s" key=%s%s' % (cx, ry + 56 + dy * 4 // 10, kr, label, key, extra))
             keys.append(key.lstrip("~^"))
     return keys, (x, y, w, h)
 
@@ -180,19 +182,23 @@ def main():
 
     # ---- SOUND: the sound and status line, the voice settings, the panel's quick controls, the kit and its beat settings
     tab("SOUND")
-    emit('stepper style=dotmatrix cx=%d cy=124 w=620 h=48 label="" key=program' % (M + 310))        # number and name in the stepper itself
-    emit('readout style=dotmatrix cx=%d cy=124 w=%d h=48 label="" key=status' % (M + 630 + (FULL - 630) // 2, FULL - 630))
+    # the pickers sized for their longest typical text: a bank ("10 Burnt Neon & Funk Kit 1"), a sound ("001 Tight Tom High A6") and the status
+    # line ("64 banks, 95 samples of yours"); the number and name are in the stepper itself
+    emit('stepper style=dotmatrix cx=%d cy=124 w=380 h=52 label="" key=bank' % (M + 190))
+    emit('stepper style=dotmatrix cx=%d cy=124 w=400 h=52 label="" key=program' % (M + 390 + 200))
+    emit('readout style=dotmatrix cx=%d cy=124 w=%d h=52 label="" key=status' % (M + 800 + 20 + (FULL - 820) // 2, FULL - 820))
+    SR, NS, VS = 182, 20, 28            # the rows fill the page: row pitch, name and value text sizes
     vo, _ = section(M, 164, "VOICE", [[("VOICES", "voices"), ("VOICE MODE", "^mono_mode"), ("ROOT NOTE", "root"), ("PAN", "pan"),
                      ("VOLUME", "volume"), ("BEND RANGE", "bend_range"), ("GLIDE MODE", "^glide_mode"), ("OSC SLOP", "slop"),
-                     ("AD MODE", "^env_gate")]], FULL)
-    qk, _ = section(M, 318, "PANEL", [[("LP FREQ", "lpf_freq"), ("RESONANCE", "lpf_res"), ("AUDIO MOD", "audio_mod"),
+                     ("AD MODE", "^env_gate")]], FULL, rh=SR - 8, kr=28, ns=NS, vs=VS)
+    qk, _ = section(M, 164 + SR, "PANEL", [[("LP FREQ", "lpf_freq"), ("RESONANCE", "lpf_res"), ("AUDIO MOD", "audio_mod"),
                      ("LP ENV", "fenv_amt"), ("HP FREQ", "hpf_freq"), ("FEEDBACK", "feedback"), ("ATTACK", "aenv_a"),
-                     ("DECAY", "aenv_d"), ("PITCH ENV", "penv_amt")]], FULL)
+                     ("DECAY", "aenv_d"), ("PITCH ENV", "penv_amt")]], FULL, rh=SR - 8, kr=28, ns=NS, vs=VS)
     # kit mode: 16 pads play 16 sounds; the last six knobs are the edited sound's beat settings (what it chokes, which voice it uses)
-    kt, _ = section(M, 472, "KIT  16 PADS, 16 SOUNDS  (CHOKE AND VOICE: THE SELECTED PAD)",
-                    [[("KIT MODE", "^kit"), ("KIT NOTES", "kit_base"), ("KIT PAGE", "kit_page"), ("CHOKE 1", "choke1"),
-                      ("CHOKE 2", "choke2"), ("VOICE ASSIGN", "voice_assign")]], 6 * 140)
-    wordmark(M + 6 * 140 + 20, 482, 360, 100)
+    kt, _ = section(M, 164 + 2 * SR, "KIT  16 PADS, 16 SOUNDS  (CHOKE AND VOICE: THE SELECTED PAD)",
+                    [[("KIT MODE", "^kit"), ("KIT NOTES", "kit_base"), ("KIT PAGE", "^kit_page"), ("CHOKE 1", "choke1"),
+                      ("CHOKE 2", "choke2"), ("VOICE ASSIGN", "voice_assign")]], 6 * 140, rh=SR - 8, kr=28, ns=NS, vs=VS)
+    wordmark(M + 6 * 140 + 20, 164 + 2 * SR + 14, 360, 100)
     qlinks("Sound", ["program", "bank", "volume", "pan", "voices", "mono_mode", "root", "bend_range"] + qk[:8])
     qlinks("Panel", qk + ["glide_mode", "slop", "env_gate", "aenv_amt"])
     qlinks("Kit", kt + ["program"])
@@ -246,6 +252,16 @@ def main():
     qlinks("Low Pass", lp + le + ["hpf_freq", "hpf_key", "feedback"])
     qlinks("HP / Amp", hp + fb + va)
 
+    # ---- ENVELOPES: amp, pitch, aux 1, aux 2
+    tab("ENV")
+    ae, _ = env_row(Y(0), "AMP ENVELOPE", "aenv", dest=False, extra=[("AMOUNT", "aenv_amt"), ("VELOCITY", "aenv_vel")])
+    pe, _ = env_row(Y(1), "PITCH ENVELOPE", "penv")
+    x1, _ = env_row(Y(2), "AUX 1 ENVELOPE", "x1env")
+    x2, _ = env_row(Y(3), "AUX 2 ENVELOPE", "x2env")
+    qlinks("Amp/Pitch", ae + pe[:8])
+    qlinks("Pitch/Aux", pe[8:] + x1 + x2[:6])
+    qlinks("Aux 2", x2)
+
     # ---- OUTPUT: the panel's Main Out (Distortion, Compress, Volume), the compressor's envelope and the mixer's delay
     tab("OUTPUT")
     OC = FULL // 7
@@ -256,16 +272,6 @@ def main():
                       ("TIME", "^delay_time")]], 4 * OC)
     wordmark(M + 4 * OC + 40, Y(1) + 10, 360, 100)
     qlinks("Output", mo + ce + dl)
-
-    # ---- ENVELOPES: amp, pitch, aux 1, aux 2
-    tab("ENV")
-    ae, _ = env_row(Y(0), "AMP ENVELOPE", "aenv", dest=False, extra=[("AMOUNT", "aenv_amt"), ("VELOCITY", "aenv_vel")])
-    pe, _ = env_row(Y(1), "PITCH ENVELOPE", "penv")
-    x1, _ = env_row(Y(2), "AUX 1 ENVELOPE", "x1env")
-    x2, _ = env_row(Y(3), "AUX 2 ENVELOPE", "x2env")
-    qlinks("Amp/Pitch", ae + pe[:8])
-    qlinks("Pitch/Aux", pe[8:] + x1 + x2[:6])
-    qlinks("Aux 2", x2)
 
     # ---- LFO: the two LFOs; MODS: the eight paths
     tab("LFO")
