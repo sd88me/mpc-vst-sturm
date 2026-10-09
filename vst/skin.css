@@ -14,20 +14,22 @@
     /* the plate: a soft top light over a brushed charcoal */
     radial-gradient(ellipse 90% 70% at 40% 0%, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 70%),
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.012) 0 1px, rgba(0, 0, 0, 0.02) 1px 3px),
-    linear-gradient(175deg, #303337 0%, #2a2c30 60%, #25272a 100%);
+    linear-gradient(175deg, #232427 0%, #1e1f22 60%, #19191b 100%);
   background-size: 100% 100%, 14px 100%, 14px 100%, 100% 100%, 100% 100%, 100% 100%;
   background-position: 0 0, 0 0, 100% 0, 0 0, 0 0, 0 0;
   background-repeat: no-repeat, repeat-y, repeat-y, no-repeat, repeat, no-repeat;
 }
-.frame-border { fill: rgba(0, 0, 0, 0.08); stroke: var(--line); stroke-width: 1.2; rx: 4px; }
+.frame-border { fill: rgba(150, 154, 162, 0.16); stroke: rgba(176, 181, 190, 0.7); stroke-width: 1.2; rx: 4px; }     /* the panel's lighter grey sections on the dark plate */
 .frame-rule { display: none; }
 .frame-title { font-size: var(--title-size); font-weight: 600; font-style: italic; fill: #a9c4e8; letter-spacing: 0.08em; }
-/* knobs (look=moog, the renderer's own drawing): a black knurled body, a white line, a brushed metal cap */
-.look-skirt { fill: #0b0b0c; }
-.look-knurl { stroke: #2e3033; }
-.look-body { fill: #141517; stroke: #000; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.75)); }
-.look-line { stroke: #ffffff; }
-.knob-sheen { opacity: 0.35; }
+/* knobs (look=moog, the renderer's own drawing, restyled as the panel's): a black ribbed skirt, a matte black top with a fine light rim,
+ * no cap, and a thin white pointer from the edge in */
+.look-skirt { fill: #070708; }
+.look-knurl { stroke: #26282b; }
+.look-body { fill: #1b1c1f; stroke: #5d6066; stroke-width: 1; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.8)); }
+.look-cap { display: none; }
+.look-line { stroke: #ffffff; stroke-width: 2.2; }
+.knob-sheen { opacity: 0.22; }
 .text, .box-label { fill: #e9ecef; letter-spacing: 0.05em; }
 /* blue LEDs */
 .look-led-bezel { fill: #0f1012; stroke: #6b7078; stroke-width: 1; }

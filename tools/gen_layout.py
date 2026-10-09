@@ -180,9 +180,8 @@ def main():
 
     # ---- SOUND: the sound and status line, the voice settings, the panel's quick controls, the kit and its beat settings
     tab("SOUND")
-    emit('stepper style=dotmatrix cx=%d cy=124 w=280 h=48 label="" key=program' % (M + 140))
-    emit('readout style=dotmatrix cx=%d cy=124 w=340 h=48 label="" key=patch_name' % (M + 280 + 10 + 170))
-    emit('readout style=dotmatrix cx=%d cy=124 w=570 h=48 label="" key=status' % (M + FULL - 285))
+    emit('stepper style=dotmatrix cx=%d cy=124 w=620 h=48 label="" key=program' % (M + 310))        # number and name in the stepper itself
+    emit('readout style=dotmatrix cx=%d cy=124 w=%d h=48 label="" key=status' % (M + 630 + (FULL - 630) // 2, FULL - 630))
     vo, _ = section(M, 164, "VOICE", [[("VOICES", "voices"), ("VOICE MODE", "^mono_mode"), ("ROOT NOTE", "root"), ("PAN", "pan"),
                      ("VOLUME", "volume"), ("BEND RANGE", "bend_range"), ("GLIDE MODE", "^glide_mode"), ("OSC SLOP", "slop"),
                      ("AD MODE", "^env_gate")]], FULL)
@@ -246,6 +245,17 @@ def main():
     voice_diagram(790, Y(2), 460, 300)
     qlinks("Low Pass", lp + le + ["hpf_freq", "hpf_key", "feedback"])
     qlinks("HP / Amp", hp + fb + va)
+
+    # ---- OUTPUT: the panel's Main Out (Distortion, Compress, Volume), the compressor's envelope and the mixer's delay
+    tab("OUTPUT")
+    OC = FULL // 7
+    mo, _ = section(M, Y(0), "MAIN OUT", [[("DISTORTION", "out_dist"), ("COMPRESS", "out_comp"), ("VOLUME", "volume")]], 3 * OC)
+    ce, _ = section(M + 3 * OC + 10, Y(0), "COMPRESSOR ENVELOPE", [[("ATTACK", "comp_attack"), ("PEAK HOLD", "comp_peak"), ("DECAY", "comp_decay"),
+                      ("AMOUNT", "comp_amount")]], FULL - 3 * OC - 10)
+    dl, _ = section(M, Y(1), "DELAY  (REPEATED NOTES)", [[("SEND", "delay_send"), ("DELAY ON", "~delay_on"), ("REPEATS", "delay_repeats"),
+                      ("TIME", "^delay_time")]], 4 * OC)
+    wordmark(M + 4 * OC + 40, Y(1) + 10, 360, 100)
+    qlinks("Output", mo + ce + dl)
 
     # ---- ENVELOPES: amp, pitch, aux 1, aux 2
     tab("ENV")

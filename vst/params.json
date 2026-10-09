@@ -1,5 +1,5 @@
 {
- "name": "Sturm",
+ "name": "Sturm-TP",
  "params": [
   {
    "key": "osc1_freq",
@@ -2744,6 +2744,102 @@
    "type": "trigger",
    "step_of": "bank_page",
    "step_delta": 1
+  },
+  {
+   "key": "out_dist",
+   "name": "Distortion",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "out_comp",
+   "name": "Compress",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "comp_attack",
+   "name": "Comp Attack",
+   "min": 0,
+   "max": 127,
+   "default": 20,
+   "display": "int"
+  },
+  {
+   "key": "comp_peak",
+   "name": "Comp Peak Hold",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "comp_decay",
+   "name": "Comp Decay",
+   "min": 0,
+   "max": 127,
+   "default": 64,
+   "display": "int"
+  },
+  {
+   "key": "comp_amount",
+   "name": "Comp Env Amount",
+   "min": 0,
+   "max": 127,
+   "default": 0,
+   "display": "int"
+  },
+  {
+   "key": "delay_send",
+   "name": "Delay Send",
+   "min": 0,
+   "max": 127,
+   "default": 100,
+   "display": "int"
+  },
+  {
+   "key": "delay_on",
+   "name": "Delay On",
+   "options": [
+    "Off",
+    "On"
+   ],
+   "default": 0
+  },
+  {
+   "key": "delay_repeats",
+   "name": "Delay Repeats",
+   "min": 0,
+   "max": 16,
+   "default": 3,
+   "display": "int"
+  },
+  {
+   "key": "delay_time",
+   "name": "Delay Time",
+   "options": [
+    "32 Qrtr",
+    "16 Qrtr",
+    "8 Qrtr",
+    "6 Qrtr",
+    "4 Qrtr",
+    "3 Qrtr",
+    "1/2 Note",
+    "Qrtr Dot",
+    "1 Qrtr",
+    "Qrtr Trip",
+    "8th",
+    "8th Trip",
+    "1/16",
+    "16th Trip",
+    "32nd",
+    "64th"
+   ],
+   "default": 10
   }
  ]
 }

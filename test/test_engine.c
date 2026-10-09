@@ -370,5 +370,58 @@ int main(int argc, char **argv) {
         E->destroy(h);
     }
     printf(fails ? "%d FAILED\n" : "all passed\n", fails);
+    {   /* output section: Distortion keeps the level (within 6 dB of clean), Compress lowers the peak, the delay plays repeats, state round-trips */
+        void *o = E->create(NULL);
+        float pk;
+        double rms[3];
+        int dv[3] = {0, 50, 127};
+        for (int k = 0; k < 3; k++) {
+            setp(o, "out_dist", dv[k]);
+            midi3(o, 0x90, 48, 110);
+            render(o, 60, &pk, NULL);
+            rms[k] = render(o, 150, &pk, NULL);
+            midi3(o, 0x80, 48, 0); midi3(o, 0xB0, 123, 0);
+            render(o, 600, &pk, NULL);
+        }
+        CHECK(rms[1] > rms[0] * 0.5 && rms[1] < rms[0] * 2 && rms[2] > rms[0] * 0.5 && rms[2] < rms[0] * 2.5,
+              "distortion keeps the level: rms %.3f / %.3f / %.3f at 0 / 50 / 127", rms[0], rms[1], rms[2]);
+        setp(o, "out_dist", 0);
+        float p0;
+        double ratio[2];
+        for (int cv = 0; cv < 2; cv++) {
+            setp(o, "out_comp", cv ? 127 : 0);
+            render(o, 600, &p0, NULL);
+            double lo, hi;
+            midi3(o, 0x90, 48, 40); render(o, 60, &p0, NULL); lo = render(o, 100, &p0, NULL); midi3(o, 0x80, 48, 0); render(o, 600, &p0, NULL);
+            midi3(o, 0x90, 48, 127); render(o, 60, &p0, NULL); hi = render(o, 100, &p0, NULL); midi3(o, 0x80, 48, 0); render(o, 600, &p0, NULL);
+            ratio[cv] = hi / lo;
+        }
+        CHECK(ratio[1] < ratio[0] * 0.9, "compress narrows loud against soft: hard/soft rms ratio %.2f -> %.2f", ratio[0], ratio[1]);
+        setp(o, "out_comp", 0);
+        /* delay: an AD-length note, repeats at 1/8 (120 bpm: 0.25 s) */
+        setp(o, "aenv_a", 0); setp(o, "aenv_d", 40); setp(o, "env_gate", 0);
+        E->set_param(o, "lfo_bpm", "120");
+        midi3(o, 0xB0, 123, 0); render(o, 800, &pk, NULL);
+        double quiet[2];
+        for (int on = 0; on < 2; on++) {
+            setp(o, "delay_on", on); setp(o, "delay_repeats", 3); setp(o, "delay_time", 10); setp(o, "delay_send", 127);
+            midi3(o, 0x90, 48, 127);
+            render(o, 20, &pk, NULL); midi3(o, 0x80, 48, 0);
+            render(o, 40, &pk, NULL);                  /* the hit has died by 0.17 s */
+            quiet[on] = render(o, 60, &pk, NULL);      /* 0.17-0.35 s holds the first repeat, due at 0.25 s */
+            render(o, 1500, &pk, NULL);
+        }
+        CHECK(quiet[1] > quiet[0] * 3 + 0.01, "delay plays a repeat after the hit (rms %.4f off, %.4f on)", quiet[0], quiet[1]);
+        setp(o, "out_dist", 33); setp(o, "comp_attack", 77); setp(o, "delay_time", 4); setp(o, "delay_on", 1); setp(o, "delay_repeats", 9);
+        char sb[16384];
+        int sn = E->get_param(o, "state", sb, sizeof sb);
+        void *o2 = E->create(NULL);
+        E->set_param(o2, "state", sb);
+        char r1[32], r2[32], r3[32];
+        E->get_param(o2, "out_dist", r1, sizeof r1); E->get_param(o2, "comp_attack", r2, sizeof r2); E->get_param(o2, "delay_repeats", r3, sizeof r3);
+        CHECK(sn > 0 && atoi(r1) == 33 && atoi(r2) == 77 && atoi(r3) == 9, "the output section survives the saved state (%s, %s, %s)", r1, r2, r3);
+        E->destroy(o2);
+        E->destroy(o);
+    }
     return fails != 0;
 }

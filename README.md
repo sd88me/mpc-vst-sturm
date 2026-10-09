@@ -1,4 +1,4 @@
-# Sturm
+# Sturm-TP
 
 A six-voice analog-style drum and synth voice for Akai MPC OS standalone devices (Force, MPC Live / One / X / Key), built as a
 native VST2 instrument with its own screen skin and Q-Link pages. It plays the way the DSI Tempest's voice does: two analog
@@ -9,15 +9,15 @@ they are.
 
 ![Sturm's SOUND page on an MPC screen](docs/img/sturm.png)
 
-*Sturm (German for storm) is an independent project, not affiliated with or endorsed by Dave Smith Instruments or Sequential.*
+*Sturm-TP (Sturm is German for storm) is an independent project, not affiliated with or endorsed by Dave Smith Instruments or Sequential.*
 
 **Status: first device build.** Installed and played on a Force; it sounds right to the author's ear, but the analog parts
 are modelled from circuits and not yet compared with an instrument. See [docs/STATUS.md](docs/STATUS.md).
 
 ## Install
 
-1. Copy the `sd88me - VST - Sturm` folder (the `.so` and its skin) to `Synths/` on the device's internal storage or a card.
-2. Restart MPC and load **Sturm** on an instrument track.
+1. Copy the `sd88me - VST - Sturm-TP` folder (the `.so` and its skin) to `Synths/` on the device's internal storage or a card.
+2. Restart MPC and load **Sturm-TP** on an instrument track.
 3. Optional: put your own `.syx` sound or project dumps in `SYSEX/` and WAVs or VS ROM chips in `SAMPLES/` (below).
 
 Runs on MPC Live / One / X / Key and Force (armhf, glibc 2.27 or newer; tested on a Force only). It needs no extra files: it plays
@@ -26,7 +26,7 @@ its own bank and stand-in samples out of the box.
 **CPU:** about 20 % of one audio block's time with eight voices sounding (peak 25 %). Sweeping Q-Links while stand-in samples are
 built in the background can reach about 35 %. Use Kit mode to share the voices across 16 pads.
 
-**Not in this release:** the sequencer, beat-wide settings, the mixer's delay, distortion and compressor, NRPN, and exporting sounds
+**Not in this release:** the sequencer, beat-wide settings, NRPN, and exporting sounds
 as SysEx. The drum and percussion samples are stand-ins, not the original's.
 
 ## How it relates to the original

@@ -112,7 +112,20 @@ typedef struct {
     char dir[PATHLEN];
     int display_rev;
     uint32_t rng;
+    /* output section: Distortion, Compress (with its envelope) and the delay's repeated notes; saved in the state's FX line */
+    int fx[10];
+    float sm_dist, sm_comp, cenv, cgain, chold;
+    int cphase, in_delay;
+    float lv_in, lv_out, dgain, xp[2], dcx[2], dcy[2], lpz[2], cpk, cgr;     /* output effects state */
+    long clk;
+    struct { long due; int note, vel; } dq[96];
+    int ndq;
 } tp_t;
+enum { FX_DIST, FX_COMP, FX_CATT, FX_CPEAK, FX_CDEC, FX_CAMT, FX_DSEND, FX_DON, FX_DREP, FX_DTIME };
+static const char *const FX_KEYS[10] = {"out_dist", "out_comp", "comp_attack", "comp_peak", "comp_decay", "comp_amount", "delay_send",
+                                        "delay_on", "delay_repeats", "delay_time"};
+static const int FX_MAX[10] = {127, 127, 127, 127, 127, 127, 127, 1, 16, 15};
+static const int FX_DEF[10] = {0, 0, 20, 0, 64, 0, 100, 0, 3, 10};
 
 static float TAU_TAB[128], DLY_TAB[128], PEAK_TAB[128];
 
@@ -128,6 +141,17 @@ static int sample_of_f(const uint8_t *f, int osc) {   /* osc 0 = Osc 3, 1 = Osc 
 static int sample_of(const tp_t *s, int osc) { return sample_of_f(s->f, osc); }
 static int PV(const voice_t *v, int i) { return v->f[i]; }
 static float S127V(const voice_t *v, int i) { return (float)v->f[i] - 127; }
+/* compressor envelope times: 0..127 -> 1 ms ... 2 s, exponential */
+static float fx_secs(int v) { return 0.001f * expf((float)v * (6.9077553f / 127.0f)); }
+static void fx_trigger(tp_t *s) { s->cphase = 1; }
+/* Distortion is a tanh stage, band-limited with first-order antiderivative antialiasing (the average of tanh over the step from the last
+ * sample to this one, from its integral log cosh): the harmonics a hard-driven tanh makes above Nyquist no longer fold back as aliases. */
+static float lcosh(float x) { x = fabsf(x); return x + log1pf(expf(-2 * x)) - 0.69314718f; }
+static float adaa_tanh(float x, float *xp) {
+    float d = x - *xp, y = fabsf(d) < 1e-4f ? tanhf(0.5f * (x + *xp)) : (lcosh(x) - lcosh(*xp)) / d;
+    *xp = x;
+    return y;
+}
 
 static float HB_B[MA_HB_B_M];     /* 2x -> 1x half-band of the low-pass */
 static void init_tables(void) {
@@ -511,6 +535,7 @@ static void choke_pads(tp_t *s, int pad) {
 }
 static void note_on(tp_t *s, int note, int vel) {
     s->deferred[note & 127] = 0;
+    fx_trigger(s);
     int pad = kit_pad(s, note);
     if (s->kit && pad < 0) return;                 /* kit mode: only the 16 pad notes play */
     if (pad >= 0) {                                /* a pad: its sound at its own pitch, on the next free (else oldest) voice */
@@ -554,6 +579,7 @@ static void note_off(tp_t *s, int note) {
 }
 static void all_off(tp_t *s) {
     s->nheld = 0;
+    s->ndq = 0;
     memset(s->deferred, 0, sizeof s->deferred);
     for (int i = 0; i < MAXV; i++) if (s->v[i].gated) voice_release(s, &s->v[i]);
 }
@@ -793,6 +819,9 @@ static void *tp_create(const char *dir) {
     s->root = 60;
     s->kit_base = 36;
     s->pan = 64;
+    for (int i = 0; i < 10; i++) s->fx[i] = FX_DEF[i];
+    s->cgain = 1;
+    s->dgain = 1;
     s->rng = 0x13579BDFu;
     for (int i = 0; i < MAXV; i++) {
         s->v[i].rng = 0x2468ACE1u + 7919u * (uint32_t)i;
@@ -882,13 +911,38 @@ static void set_sample(tp_t *s, int osc, int k) {
     prepare_samples(s);
 }
 
+/* The instrument's delay makes extra, later notes instead of delaying audio (manual p. 44): Repeats copies of each note, one Time apart,
+ * each quieter than the one before, the first at Send / 127 of the velocity. A note-off is repeated the same way. */
+static void delay_sched(tp_t *s, int note, int vel, int on) {
+    int rep = s->fx[FX_DREP];
+    if (!s->fx[FX_DON] || !s->fx[FX_DSEND] || !rep || s->in_delay) return;
+    float bpm = s->host_bpm > 0 ? s->host_bpm : 120;
+    long T = (long)(60.0f / bpm * SYNC_Q[clampi(s->fx[FX_DTIME], 0, 15)] * FS);
+    if (T < 64) T = 64;
+    for (int k = 1; k <= rep && s->ndq < 96; k++) {
+        int vk = on ? (int)(vel * s->fx[FX_DSEND] / 127.0f * (1.0f - (float)(k - 1) / (rep + 1)) + 0.5f) : 0;
+        if (on && vk < 1) break;
+        s->dq[s->ndq].due = s->clk + k * T; s->dq[s->ndq].note = note; s->dq[s->ndq].vel = vk; s->ndq++;
+    }
+}
+static void delay_run(tp_t *s) {
+    for (int i = 0; i < s->ndq;) {
+        if (s->dq[i].due > s->clk) { i++; continue; }
+        int note = s->dq[i].note, vel = s->dq[i].vel;
+        memmove(&s->dq[i], &s->dq[i + 1], sizeof s->dq[0] * (size_t)(--s->ndq - i));
+        s->in_delay = 1;
+        if (vel) note_on(s, note, vel); else note_off(s, note);
+        s->in_delay = 0;
+    }
+}
+
 static void tp_midi(void *h, const uint8_t *m, int len) {
     tp_t *s = h;
     if (len < 2 || m[0] >= 0xF0) return;
     int st = m[0] & 0xF0, d1 = m[1] & 127, d2 = len > 2 ? m[2] & 127 : 0;
     switch (st) {
-    case 0x90: if (d2) { note_on(s, d1, d2); break; } /* fall through */
-    case 0x80: note_off(s, d1); break;
+    case 0x90: if (d2) { note_on(s, d1, d2); delay_sched(s, d1, d2, 1); break; } /* fall through */
+    case 0x80: note_off(s, d1); delay_sched(s, d1, 0, 0); break;
     case 0xA0: s->t_press = d2 / 127.0f; break;
     case 0xD0: s->t_press = d1 / 127.0f; break;
     case 0xE0: s->bend = ((d1 | (d2 << 7)) - 8192) / 8192.0f; break;
@@ -926,6 +980,10 @@ static void tp_render(void *h, int16_t *out, int frames) {
         s->breath += (s->t_breath - s->breath) * k; s->foot1 += (s->t_foot1 - s->foot1) * k; s->foot2 += (s->t_foot2 - s->foot2) * k;
         s->expr += (s->t_expr - s->expr) * k;
         for (int j = 0; j < 4; j++) s->sl[j] += (s->t_sl[j] - s->sl[j]) * k;
+        delay_run(s);
+        s->clk += n;
+        s->sm_dist += ((float)s->fx[FX_DIST] - s->sm_dist) * 0.03f;
+        s->sm_comp += ((float)s->fx[FX_COMP] - s->sm_comp) * 0.03f;
         memset(buf, 0, sizeof buf);
         for (int i = 0; i < MAXV; i++) {
             voice_t *v = &s->v[i];
@@ -943,9 +1001,57 @@ static void tp_render(void *h, int16_t *out, int frames) {
             }
         }
         float g = 0.224f * s->cc_vol;   /* 7 dB below the first build, which clipped on chords: bench RMS on the Force, level-matched with Profit-8, Clementine-XT and Maze Voice */
-        for (int i = 0; i < 2 * n; i++) {
-            float x = ma_tanh(buf[i] * g);   /* soft limiter instead of a hard clip */
-            out[2 * f + i] = (int16_t)lrintf(x * 32767);
+        /* the panel's output effects, stereo, before the limiter. Distortion: drive into a tanh, scaled back as the drive rises so the knob adds
+         * harmonics, not level (the same makeup as Morpho-PE's). Compress: a peak compressor whose detector also hears the envelope
+         * (attack, peak hold, decay; Env Amount sets how much), which is how a drum hit ducks the mix like a side-chain. */
+        float dd = s->sm_dist * (1.0f / 127), kd = 1 + 40 * dd * dd, bias = 0.18f * dd;      /* a little bias: the even harmonics of a real stage */
+        float lpk = 1 - expf(-6.2831853f * (14000.0f - 8500.0f * dd) / FS);                 /* the stage's own rolloff, lower as it is driven */
+        float tb = tanhf(bias);
+        float cc = s->sm_comp * (1.0f / 127), thr_db = -8 - 26 * cc, rat = 2 + 8 * cc, knee = 8;
+        float mk_db = -thr_db * (1 - 1 / rat) * 0.5f;                                       /* half the loss made up */
+        float ca = 1.0f / (fx_secs(s->fx[FX_CATT]) * FS), cd = 1.0f / (fx_secs(s->fx[FX_CDEC]) * FS), cam = s->fx[FX_CAMT] * (0.6f / 127);
+        const float pa = 1 - expf(-1.0f / (0.001f * FS)), pr = 1 - expf(-1.0f / (0.06f * FS));          /* peak detector: 1 ms in, 60 ms out */
+        const float ga = 1 - expf(-1.0f / (0.003f * FS)), gr_rel = 1 - expf(-1.0f / (0.15f * FS));      /* gain: 3 ms attack, 150 ms release */
+        for (int i = 0; i < n; i++) {
+            float L = buf[2 * i] * g, R = buf[2 * i + 1] * g;
+            if (s->cphase == 1) { s->cenv += ca; if (s->cenv >= 1) { s->cenv = 1; s->cphase = 2; s->chold = fx_secs(s->fx[FX_CPEAK]) * FS * (s->fx[FX_CPEAK] ? 1 : 0); } }
+            else if (s->cphase == 2) { if (--s->chold <= 0) s->cphase = 3; }
+            else if (s->cphase == 3) { s->cenv -= cd; if (s->cenv <= 0) { s->cenv = 0; s->cphase = 0; } }
+            if (s->sm_dist > 0.05f) {
+                /* level match: the distorted signal is scaled so its short-term power equals the clean input's (gain limited to -24..+12 dB),
+                 * whatever the input level, so turning the knob changes the sound and not the loudness */
+                float pin = 0.5f * (L * L + R * R);
+                float in[2] = {L, R}, y[2];
+                for (int c = 0; c < 2; c++) {
+                    float v = adaa_tanh(in[c] * kd + bias, &s->xp[c]) - tb;
+                    float h = v - s->dcx[c] + 0.9995f * s->dcy[c];                 /* DC blocker: the bias leaves an offset */
+                    s->dcx[c] = v; s->dcy[c] = h;
+                    s->lpz[c] += (h - s->lpz[c]) * lpk;
+                    y[c] = s->lpz[c];
+                }
+                L = y[0]; R = y[1];
+                float pout = 0.5f * (L * L + R * R);
+                s->lv_in += (pin - s->lv_in) * 0.0015f; s->lv_out += (pout - s->lv_out) * 0.0015f;
+                float want = sqrtf((s->lv_in + 1e-9f) / (s->lv_out + 1e-9f));
+                want = want < 0.063f ? 0.063f : want > 4 ? 4 : want;
+                s->dgain += (want - s->dgain) * 0.002f;
+                L *= s->dgain; R *= s->dgain;
+            } else { s->xp[0] = s->xp[1] = 0; }
+            /* compressor: linked stereo peak detector (and the envelope), soft-knee gain computer in dB, attack and release on the reduction */
+            float tgr = 0;
+            if (cc > 0.002f) {
+                float lvl = fmaxf(fmaxf(fabsf(L), fabsf(R)), cam * s->cenv);
+                s->cpk += (lvl - s->cpk) * (lvl > s->cpk ? pa : pr);
+                float over = 8.685889f * logf(s->cpk + 1e-6f) - thr_db, sl = 1 / rat - 1;
+                tgr = 2 * over < -knee ? 0 : 2 * fabsf(over) <= knee ? sl * (over + knee * 0.5f) * (over + knee * 0.5f) / (2 * knee) : sl * over;
+            }
+            s->cgr += (tgr - s->cgr) * (tgr < s->cgr ? ga : gr_rel);
+            if (cc > 0.002f || s->cgr < -0.01f) {
+                float gn = expf((s->cgr + (cc > 0.002f ? mk_db : 0)) * 0.11512925f);
+                L *= gn; R *= gn;
+            }
+            out[2 * (f + i)] = (int16_t)lrintf(ma_tanh(L) * 32767);     /* soft limiter instead of a hard clip */
+            out[2 * (f + i) + 1] = (int16_t)lrintf(ma_tanh(R) * 32767);
         }
     }
 }
@@ -1011,6 +1117,9 @@ static void state_set(tp_t *s, const char *val) {
         while (*q == ' ' || *q == '\n') q++;
     } else return;
     all_off(s);
+    const char *fxl = strstr(val, "\nFX ");       /* the output section; older states have none (defaults) */
+    for (int j = 0; j < 10; j++) s->fx[j] = FX_DEF[j];
+    if (fxl) { const char *t = fxl + 3; for (int j = 0; j < 10; j++) { char *e; long x = strtol(t, &e, 10); if (e == t) break; s->fx[j] = clampi((int)x, 0, FX_MAX[j]); t = e; } }
     const char *tf = strstr(val, "\nTF ");        /* Sample Sounds first: the saved bank number counts the filtered banks */
     set_sample_filter(s, tf ? atoi(tf + 4) : 0);
     if (b >= 0 && b < s->nbanks && b != s->cur_bank) load_bank(s, b);
@@ -1055,6 +1164,11 @@ static int state_get(tp_t *s, char *b, int n) {
         o += snprintf(b + o, (size_t)(n - o), " %02x%02x%02x\n", s->chk[s->cur_prog][0], s->chk[s->cur_prog][1], s->chk[s->cur_prog][2]);
     }
     if (s->skip && o + 8 < n) o += snprintf(b + o, (size_t)(n - o), "TF %d\n", s->skip);
+    if (o + 48 < n) {
+        o += snprintf(b + o, (size_t)(n - o), "FX");
+        for (int j = 0; j < 10; j++) o += snprintf(b + o, (size_t)(n - o), " %d", s->fx[j]);
+        o += snprintf(b + o, (size_t)(n - o), "\n");
+    }
     return o < n ? o + 1 : n;
 }
 
@@ -1064,6 +1178,8 @@ static void tp_set_param(void *h, const char *k, const char *val) {
     int i = find_key(k);
     if (i >= 0) { set_field(s, i, atoi(val)); return; }
     int x = atoi(val);
+    for (int j = 0; j < 10; j++)
+        if (!strcmp(k, FX_KEYS[j])) { s->fx[j] = clampi(x, 0, FX_MAX[j]); if (j == FX_DON && !s->fx[j]) s->ndq = 0; return; }
     if (!strcmp(k, "bank")) { if (x != s->cur_bank && x < s->nbanks) { load_bank(s, x); select_sound(s, 0); } }
     else if (!strcmp(k, "program")) { if (x != s->cur_prog) select_sound(s, x); }
     else if (!strcmp(k, "browse_bank")) { if (x != s->browse_bank && x >= 0 && x < s->nbanks) { s->browse_page = 0; browse_load(s, x); } }
@@ -1152,6 +1268,7 @@ static int tp_get_param(void *h, const char *k, char *b, int n) {
     if (!strcmp(k, "patch_page")) return snprintf(b, z, "%d", s->browse_page) + 1;
     if (!strcmp(k, "bank_page")) return snprintf(b, z, "%d", s->bank_page) + 1;
     if (!strcmp(k, "sample_filter")) return snprintf(b, z, "%d", s->skip) + 1;
+    for (int j = 0; j < 10; j++) if (!strcmp(k, FX_KEYS[j])) return snprintf(b, z, "%d", s->fx[j]) + 1;
     if (!strcmp(k, "bank_range")) {
         int a = s->bank_page * BANK_SLOTS;
         return snprintf(b, z, "Banks %d-%d of %d", a + 1, a + BANK_SLOTS < s->nbanks ? a + BANK_SLOTS : s->nbanks, s->nbanks) + 1;

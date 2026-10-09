@@ -5,4 +5,9 @@
     <path d="M68,25 H32 Q24,25 24,33 V40 Q24,48 32,48 H60 Q68,48 68,56 V63 Q68,71 60,71 H24 M82,25 H130 M106,25 V71 M142,25 V63 Q142,71 150,71 H178 Q186,71 186,63 V25 M200,71 V25 H234 Q244,25 244,35 V38 Q244,48 234,48 H200 M226,48 L246,71 M258,71 V25 L280,54 L302,25 V71" stroke="#ffffff"/>
   </g>
   <rect x="24" y="84" width="238" height="3" fill="#2f7dff"/>
+  <!-- TP: the model suffix, small, same white with a thin blue shadow -->
+  <g fill="none" stroke-width="4.5" stroke-linejoin="bevel" stroke-linecap="butt">
+    <path d="M296,80 H318 M307,80 V96 M326,96 V80 H336 Q343,80 343,85.5 Q343,91 336,91 H326" stroke="#2f7dff" transform="translate(1.5,1.5)"/>
+    <path d="M296,80 H318 M307,80 V96 M326,96 V80 H336 Q343,80 343,85.5 Q343,91 336,91 H326" stroke="#ffffff"/>
+  </g>
 </svg>
