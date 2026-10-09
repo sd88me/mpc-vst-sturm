@@ -205,15 +205,15 @@ def main():
     SX = M + BW + 16
     SW = FULL - BW - 16
     emit('frame x=%d y=96 w=%d h=604 title="BANKS"' % (M, BW))
-    emit('stepper style=dotmatrix cx=%d cy=156 w=%d h=34 label="" key=browse_bank' % (M + BW // 2, BW - 24))
+    emit('stepper style=dotmatrix cx=%d cy=162 w=%d h=28 label="" key=browse_bank' % (M + BW // 2, BW - 24))
     emit('list x=%d y=184 w=%d h=450 cols=2 rows=11 gap=6 th=35 key=bank_slot order=cols' % (M + 12, BW - 24))
-    emit('stepper style=dotmatrix cx=%d cy=672 w=%d h=34 label="" key=bank_page' % (M + BW // 2, BW - 24))
+    emit('stepper style=dotmatrix cx=%d cy=666 w=%d h=28 label="" key=bank_page' % (M + BW // 2, BW - 24))
     emit('frame x=%d y=96 w=%d h=604 title="SOUNDS"' % (SX, SW))
-    emit('stepper style=dotmatrix cx=%d cy=156 w=%d h=34 label="" key=program' % (SX + SW // 2, SW - 24))
+    emit('stepper style=dotmatrix cx=%d cy=162 w=%d h=28 label="" key=program' % (SX + SW // 2, SW - 24))
     emit('list x=%d y=184 w=%d h=450 cols=2 rows=16 gap=2 th=26 key=patch_slot order=cols' % (SX + 12, SW - 24))
     half = (SW - 24 - 8) // 2
-    emit('stepper style=dotmatrix cx=%d cy=672 w=%d h=34 label="" key=patch_page' % (SX + 12 + half // 2, half))
-    emit('popup cx=%d cy=672 w=%d h=34 label="" key=sample_filter' % (SX + 12 + half + 8 + half // 2, half))
+    emit('stepper style=dotmatrix cx=%d cy=666 w=%d h=28 label="" key=patch_page' % (SX + 12 + half // 2, half))
+    emit('popup cx=%d cy=666 w=%d h=28 label="" key=sample_filter' % (SX + 12 + half + 8 + half // 2, half))
     qlinks("Banks", ["browse_bank", "bank_page", "program", "patch_page", "bank_page_prev", "bank_page_next", "patch_page_prev", "patch_page_next", "sample_filter"])
 
     # ---- OSC: two analog oscillators and two sample oscillators

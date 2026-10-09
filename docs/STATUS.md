@@ -60,7 +60,7 @@
 - Envelope time modulation follows the manual's direction; the firmware's arithmetic suggests the opposite (docs/FIRMWARE.md).
 - `test_port.sh`: "six data wheel clicks step six" fails on Osc1 Freq (0-120): the wrapper rounds a 1.2-step click to 2 (the
   same wrapper limit Morpho-PE records).
-- Not done: the sequencer (out of scope), Beat-wide parameters, the mixer's delay/distortion/compressor, NRPN, writing sounds
+- Not done: the sequencer (out of scope), Beat-wide parameters, NRPN, writing sounds
   back as SysEx. Played on a Force once (2026-10-07).
 
 ## Next steps
@@ -68,3 +68,17 @@
 2. Listen against the hardware (or recordings) and fit the analog guesses.
 3. Kit mode on a device: MPC's pad notes, per-pad pan. Choke 1/2 are done (read from a project's beats, section 5 of docs/FIRMWARE.md); Voice Assign is by hand only (its byte in the beat was not found).
 4. README screenshots, catalog entry (`release.py --repo sd88me/mpc-vst-sturm --license MIT --id sturm --extra standins:SAMPLES`).
+
+## 2026-10-09: Sturm-TP, output section
+- Renamed Sturm-TP (display name, plugin and skin folder `sd88me - VST - Sturm-TP`; uid and `.so` name unchanged).
+- OUTPUT tab, ten new host parameters appended (not part of a sound): **Distortion** (tanh stage with first-order antiderivative antialiasing, a little
+  even-harmonic bias, DC blocker, a rolloff that drops with drive, level-matched to the clean input so the knob adds sound, not volume; aliasing
+  -78 dB against -54 dB for a plain tanh at full drive), **Compress** with the **compressor envelope** (Attack, Peak Hold, Decay, Amount: a note
+  trigger runs an attack/hold/decay envelope the detector also hears, so a hit ducks the mix like a side-chain; stereo-linked peak detector,
+  soft-knee gain computer in dB, 3 ms attack and 150 ms release on the reduction, half-makeup), and the **delay**: as the manual says (p. 44) it plays
+  repeated *notes* rather than delayed audio: Repeats copies of each note, one Time apart (the 16 tempo-synced rates the LFO uses), each quieter,
+  the first at Send/127 of the velocity; the note-off repeats too. Not from the firmware: the manual has no numbers for these, so the curves are
+  ours. Not done: the compressor's trigger-sound choice and a negative Amount, per-sound Send/On (Send and On are global), Beat-wide sources.
+- SOUND page: one stepper (number and name), as Morpho-PE's PROGRAM page. BANKS page: thinner pickers and page controls, clear of the panel
+  titles and edges (checked on the Force). Skin: darker plate with lighter grey filled panels, knobs restyled after the panel (no cap, light rim).
+- Tests: distortion keeps the level, compress narrows loud against soft, the delay plays a repeat, the output state round-trips.
