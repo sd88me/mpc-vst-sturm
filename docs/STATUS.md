@@ -67,7 +67,7 @@
 1. Device: install, bench (mpc-vst-plugins docs/BENCH.md), play, save/reload a project.
 2. Listen against the hardware (or recordings) and fit the analog guesses.
 3. Kit mode on a device: MPC's pad notes, per-pad pan. Choke 1/2 are done (read from a project's beats, section 5 of docs/FIRMWARE.md); Voice Assign is by hand only (its byte in the beat was not found).
-4. README screenshots, catalog entry (`release.py --repo sd88me/mpc-vst-sturm --license MIT --id sturm --extra standins:SAMPLES`).
+4. README screenshots, catalog entry (`release.py --repo sd88me/mpc-vst-sturm --license GPL-3.0-or-later --id sturm --extra standins:SAMPLES`).
 
 ## 2026-10-09: Sturm-TP, output section
 - Renamed Sturm-TP (display name, plugin and skin folder `sd88me - VST - Sturm-TP`; uid and `.so` name unchanged).
