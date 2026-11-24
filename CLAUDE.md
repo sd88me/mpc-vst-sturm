@@ -15,4 +15,4 @@ Ground rules:
 - `vst/params.json`, `src/patch_tab.h` and `vst/layout.conf` are generated: edit `tools/gen_patch.py` / `tools/gen_layout.py` and
   run `tools/make_layout.sh`. Field order is the instrument's and append-only once released.
 - Analog model changes: say in docs/ANALOG.md what is measured, what is inferred, and from what.
-- Every release must be catalog-conformant (`release.py --repo ... --license MIT --id ... --extra standins:SAMPLES`, so the stand-in WAVs ship, `catalog_check.py --catalog` OK).
+- Every release must be catalog-conformant (`release.py --repo ... --license GPL-3.0-or-later --id ... --extra standins:SAMPLES`, so the stand-in WAVs ship, `catalog_check.py --catalog` OK).

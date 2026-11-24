@@ -98,3 +98,7 @@ tools/make_layout.sh                                         # params.json, src/
 ```
 
 Engine tests: see the first lines of `test/test_engine.c`. Firmware tools: `tools/fw/tp_fw.py` (works on your own files).
+
+## Licence
+
+Free software under the GNU General Public License, version 3 or later: see `LICENSE`. It was MIT before 2026-11-24; code contributed under MIT keeps that notice (`LICENSE-MIT`).
